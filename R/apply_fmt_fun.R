@@ -22,42 +22,55 @@ apply_fmt_fun <- function(x, replace = FALSE) {
   check_scalar_logical(replace)
 
   # add stat_fmt if not already present, if replace is TRUE overwrite existing stat_fmt column
-  if (!"stat_fmt" %in% names(x) || isTRUE(replace)) {
-    x <- x |> dplyr::mutate(.after = "stat", stat_fmt = list(NULL))
+  has_stat_fmt <- "stat_fmt" %in% names(x)
+  if (!has_stat_fmt || isTRUE(replace)) {
+    stat_fmt_col <- vector("list", nrow(x))
+    stat_fmt_pos <- match("stat", names(x))
+  } else {
+    stat_fmt_col <- x[["stat_fmt"]]
   }
 
-  x |>
-    dplyr::mutate(
-      stat_fmt =
-        pmap(
-          list(
-            .data$stat,
-            .data$variable,
-            .data$stat_name,
-            .data$fmt_fun,
-            .data$stat_fmt
-          ),
-          function(stat, variable, stat_name, fn, stat_fmt) {
-            if (!is.null(fn) && is.null(stat_fmt)) {
-              tryCatch(
-                do.call(alias_as_fmt_fun(fn, variable, stat_name), args = list(stat)),
-                error = \(e) {
-                  cli::cli_abort(
-                    c("There was an error applying the formatting function to
-                       statistic {.val {stat_name}} for variable {.val {variable}}.",
-                      "i" = "Perhaps try formmatting function {.fun as.character}? See error message below:",
-                      "x" = conditionMessage(e)
-                    ),
-                    call = get_cli_abort_call()
-                  )
-                }
-              )
-            } else {
-              stat_fmt
-            }
-          }
-        )
-    )
+  # apply formatting functions via for-loop instead of pmap
+  # (avoids dplyr::mutate + DataMask overhead)
+  stat_col <- x[["stat"]]
+  var_col <- x[["variable"]]
+  sn_col <- x[["stat_name"]]
+  fn_col <- x[["fmt_fun"]]
+
+  for (i in seq_len(nrow(x))) {
+    fn <- fn_col[[i]]
+    sf <- stat_fmt_col[[i]]
+    if (!is.null(fn) && is.null(sf)) {
+      stat_fmt_col[[i]] <- tryCatch(
+        do.call(alias_as_fmt_fun(fn, var_col[[i]], sn_col[[i]]),
+                args = list(stat_col[[i]])),
+        error = \(e) {
+          cli::cli_abort(
+            c("There was an error applying the formatting function to
+               statistic {.val {sn_col[[i]]}} for variable {.val {var_col[[i]]}}.",
+              "i" = "Perhaps try formmatting function {.fun as.character}? See error message below:",
+              "x" = conditionMessage(e)
+            ),
+            call = get_cli_abort_call()
+          )
+        }
+      )
+    }
+  }
+
+  x[["stat_fmt"]] <- stat_fmt_col
+  # ensure stat_fmt is positioned after stat
+  if (!has_stat_fmt || isTRUE(replace)) {
+    col_order <- names(x)
+    stat_pos <- match("stat", col_order)
+    fmt_pos <- match("stat_fmt", col_order)
+    if (fmt_pos != stat_pos + 1L) {
+      col_order <- c(col_order[seq_len(stat_pos)], "stat_fmt",
+                     setdiff(col_order[(stat_pos + 1L):length(col_order)], "stat_fmt"))
+      x <- x[col_order]
+    }
+  }
+  x
 }
 
 #' Convert Alias to Function

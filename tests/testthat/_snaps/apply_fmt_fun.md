@@ -11,9 +11,7 @@
     Code
       apply_fmt_fun(dplyr::mutate(ard_fmt_checks, fmt_fun = list("xoxo", "xoxo")))
     Condition
-      Error in `dplyr::mutate()`:
-      i In argument: `stat_fmt = pmap(...)`.
-      Caused by error in `apply_fmt_fun()`:
+      Error in `apply_fmt_fun()`:
       ! There was an error applying the formatting function to statistic "mean" for variable "mpg".
       i Perhaps try formmatting function `as.character()`? See error message below:
       x The format "xoxo" for `fmt_fun` is not valid for the variable "mpg" for the statistic "mean". String must begin with 'x' and only consist of x's, a single period or none, and may end with a percent symbol.
@@ -23,9 +21,7 @@
     Code
       apply_fmt_fun(dplyr::mutate(ard_fmt_checks, fmt_fun = list(1L, -1L)))
     Condition
-      Error in `dplyr::mutate()`:
-      i In argument: `stat_fmt = pmap(...)`.
-      Caused by error in `apply_fmt_fun()`:
+      Error in `apply_fmt_fun()`:
       ! There was an error applying the formatting function to statistic "sd" for variable "mpg".
       i Perhaps try formmatting function `as.character()`? See error message below:
       x The value in `fmt_fun` cannot be converted into a function for statistic "sd" and variable "mpg". i Value must be a function, a non-negative integer, or a formatting string, e.g. "xx.x". * See `?cards::alias_as_fmt_fun()` for details.

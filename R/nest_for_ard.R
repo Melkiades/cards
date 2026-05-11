@@ -100,38 +100,38 @@ nest_for_ard <- function(data, by = NULL, strata = NULL, key = "data",
       tidyr::unnest(cols = all_of(key))
   }
 
-  # we will now add a column to the df_return data frame of the subsetted data
-  #   to do so, we'll construct a list of expressions that can be passed to
-  #   dplyr::filter() to subset the data frame
+  # add a column of subsetted data frames to df_return
+  # uses base R indexing instead of per-row dplyr::filter for performance
   if (isTRUE(include_data)) {
-    lst_filter_exprs <-
-      seq_len(nrow(df_return)) |>
-      lapply(
-        FUN = function(i) {
-          lapply(
-            X = c(by, strata),
-            FUN = function(z) {
-              expr(!!data_sym(z) %in% df_return[[!!z]][!!i])
-            }
-          )
-        }
-      )
+    group_vars <- c(by, strata)
+    # remove rows with NA in grouping variables
+    data_complete <- tidyr::drop_na(data, all_of(group_vars))
 
-    # now adding the subsetted data frames to the nested tibble
-    df_return[[key]] <-
-      lapply(
-        seq_len(nrow(df_return)),
-        FUN = function(i) {
-          data <- dplyr::filter(data, !!!lst_filter_exprs[[i]])
+    # columns to drop from nested data
+    drop_cols <- if (!include_by_and_strata) group_vars else character()
+    keep_cols <- setdiff(names(data_complete), drop_cols)
 
-          # remove by and strata columns, unless requested to stay
-          if (!include_by_and_strata) {
-            data <- dplyr::select(data, -all_of(.env$by), -all_of(.env$strata))
-          }
+    if (length(group_vars) == 1L) {
+      # fast path: single grouping variable — use split()
+      split_key <- data_complete[[group_vars]]
+      data_splits <- split(data_complete[keep_cols], split_key, drop = FALSE)
 
-          data
-        }
-      )
+      df_return[[key]] <- lapply(seq_len(nrow(df_return)), function(i) {
+        val <- df_return[[group_vars]][[i]]
+        val_chr <- as.character(val)
+        data_splits[[val_chr]] %||% data_complete[0L, keep_cols, drop = FALSE]
+      })
+    } else {
+      # general path: build composite key for both data and df_return
+      data_key <- do.call(paste, c(lapply(group_vars, function(v) data_complete[[v]]), list(sep = "\x01")))
+      data_splits <- split(data_complete[keep_cols], data_key, drop = FALSE)
+
+      df_return[[key]] <- lapply(seq_len(nrow(df_return)), function(i) {
+        ret_key <- paste(vapply(group_vars, function(v) as.character(df_return[[v]][[i]]), character(1L)),
+                         collapse = "\x01")
+        data_splits[[ret_key]] %||% data_complete[0L, keep_cols, drop = FALSE]
+      })
+    }
   }
 
   # put variable levels in list to preserve types when stacked -----------------
@@ -184,16 +184,16 @@ nest_for_ard <- function(data, by = NULL, strata = NULL, key = "data",
 #' cards:::.nesting_rename_ard_columns(ard, by = "ARM", strata = "AESOC")
 .nesting_rename_ard_columns <- function(x, variable = NULL, by = NULL, strata = NULL) {
   if (!is_empty(variable)) {
-    x <-
-      x |>
-      dplyr::rename(variable_level = !!sym(variable)) |>
-      dplyr::mutate(variable = .env$variable, .before = 0L)
+    # rename variable column to variable_level, add variable name column
+    names(x)[names(x) == variable] <- "variable_level"
+    x[["variable"]] <- rep(variable, nrow(x))
   }
   if (!is_empty(by) || !is_empty(strata)) {
-    x <-
-      x |>
-      dplyr::mutate(!!!(as.list(c(by, strata)) |> stats::setNames(paste0("group", seq_along(c(strata, by))))), .before = 0L) |>
-      dplyr::rename(!!!(as.list(c(by, strata)) |> stats::setNames(paste0("group", seq_along(c(strata, by)), "_level"))))
+    grp_vars <- c(by, strata)
+    for (gi in seq_along(grp_vars)) {
+      x[[paste0("group", gi)]] <- rep(grp_vars[[gi]], nrow(x))
+      names(x)[names(x) == grp_vars[[gi]]] <- paste0("group", gi, "_level")
+    }
   }
 
   tidy_ard_column_order(x)

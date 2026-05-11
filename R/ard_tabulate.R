@@ -374,7 +374,7 @@ ard_tabulate.data.frame <- function(data,
 
   df_result_tabulation[["warning"]] <- rep(list(NULL), nrow(df_result_tabulation))
   df_result_tabulation[["error"]] <- rep(list(NULL), nrow(df_result_tabulation))
-  tidy_ard_column_order(df_result_tabulation)
+  tidy_ard_column_order(dplyr::as_tibble(df_result_tabulation))
 }
 
 .check_whether_na_counts <- function(data) {

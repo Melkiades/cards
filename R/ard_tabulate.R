@@ -322,7 +322,7 @@ ard_tabulate.data.frame <- function(data,
     keep_stats <- stat_col_map[present_stat_cols]
     keep_mask <- keep_stats %in% requested
     present_stat_cols <- present_stat_cols[keep_mask]
-    keep_stats <- keep_stats[keep_mask]
+    keep_stats <- unname(keep_stats[keep_mask])
 
     if (length(present_stat_cols) == 0L) next
 

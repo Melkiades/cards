@@ -257,30 +257,35 @@ ard_summary.data.frame <- function(data,
     map(
       df_nested[["...ard_nested_data..."]],
       function(nested_data) {
-        map(
-          variables,
-          function(variable) {
-            map2(
-              statistic[[variable]], names(statistic[[variable]]),
-              function(fun, fun_name) {
-                .lst_results_as_df(
-                  x = # calculate results, and place in tibble
-                    eval_capture_conditions(
-                      getOption(
-                        "cards.calculate_stats_as_ard.eval_fun",
-                        default = expr(do.call(fun, args = list(stats::na.omit(nested_data[[variable]]))))
-                      )
-                    ),
-                  variable = variable,
-                  fun_name = fun_name,
-                  fun = fun
-                )
-              }
-            ) |>
-              unname()
+        # collect all per-variable, per-stat data frames into a flat list,
+        # then bind once with vctrs::vec_rbind instead of per-variable dplyr::bind_rows
+        parts <- vector("list", length(variables))
+        for (vi in seq_along(variables)) {
+          variable <- variables[[vi]]
+          funs <- statistic[[variable]]
+          fun_names <- names(funs)
+          sub_parts <- vector("list", length(funs))
+          for (fi in seq_along(funs)) {
+            # `fun` must be in scope: the custom eval expression from
+            # ard_mvsummary references it by name
+            fun <- funs[[fi]]
+            fun_name <- fun_names[[fi]]
+            sub_parts[[fi]] <-
+              .lst_results_as_df(
+                x = eval_capture_conditions(
+                  getOption(
+                    "cards.calculate_stats_as_ard.eval_fun",
+                    default = expr(do.call(fun, args = list(stats::na.omit(nested_data[[variable]]))))
+                  )
+                ),
+                variable = variable,
+                fun_name = fun_name,
+                fun = fun
+              )
           }
-        ) |>
-          dplyr::bind_rows()
+          parts[[vi]] <- sub_parts
+        }
+        vctrs::vec_rbind(!!!unlist(parts, recursive = FALSE))
       }
     )
 
@@ -316,33 +321,38 @@ ard_summary.data.frame <- function(data,
   # unnesting results if needed
   if (.is_named_list(x$result, allow_df = TRUE)) {
     if (is.data.frame(x$result)) x$result <- unclass(x$result)
+    n <- length(x$result)
+    # vctrs::new_data_frame avoids dplyr::tibble overhead (~100x faster per call,
+    # and this function is called once per variable × statistic × by-group)
     df_ard <-
-      dplyr::tibble(
+      vctrs::new_data_frame(list(
+        variable = rep(variable, n),
         stat_name = names(x$result),
-        result = unname(x$result),
-        warning = list(x$warning),
-        error = list(x$error)
-      )
+        stat = unname(x$result),
+        warning = rep(list(x$warning), n),
+        error = rep(list(x$error), n)
+      ))
   }
   # if result is not a nested list, return a single row tibble
   else {
+    # determine stat_name: use cards_fn placeholder names when result is empty
+    sn <- if (is_empty(x$result) && is_cards_fn(fun)) {
+      get_cards_fn_stat_names(fun)
+    } else {
+      fun_name
+    }
+    n <- length(sn)
     df_ard <-
-      map(x, list) |>
-      dplyr::as_tibble() |>
-      dplyr::mutate(
-        stat_name =
-        # if the function is a "cards_fn" AND the result is missing, use the provided placeholder stat names
-          case_switch(
-            is_empty(.env$x$result) && is_cards_fn(.env$fun) ~ list(get_cards_fn_stat_names(.env$fun)),
-            .default = .env$fun_name
-          )
-      ) |>
-      tidyr::unnest("stat_name")
+      vctrs::new_data_frame(list(
+        variable = rep(variable, n),
+        stat_name = sn,
+        stat = rep(list(x$result), n),
+        warning = rep(list(x$warning), n),
+        error = rep(list(x$error), n)
+      ))
   }
 
-  df_ard |>
-    dplyr::mutate(variable = .env$variable) |>
-    dplyr::rename(stat = "result")
+  df_ard
 }
 
 

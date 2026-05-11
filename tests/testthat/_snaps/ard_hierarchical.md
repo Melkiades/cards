@@ -3,7 +3,7 @@
     Code
       class(ard_heir_no_by)
     Output
-      [1] "card"       "tbl_df"     "tbl"        "data.frame"
+      [1] "card"       "data.frame"
 
 # ard_hierarchical() works without any variables
 
@@ -27,10 +27,10 @@
     Message
       {cards} data frame: 1 x 15
     Output
-        group1 group1_level group2 group2_level group3 group3_level variable
-      1   TRTA      Placebo  AESEV         MILD  AESOC    CARDIAC …  AEDECOD
-        variable_level stat_name stat_label stat
-      1      ATRIAL F…         n          n    0
+        group1 group1_level group2 group2_level group3     group3_level variable
+      1   TRTA      Placebo  AESEV         MILD  AESOC CARDIAC <U+2026>  AEDECOD
+          variable_level stat_name stat_label stat
+      1 ATRIAL F<U+2026>         n          n    0
     Message
       i 4 more variables: context, fmt_fun, warning, error
 
@@ -46,10 +46,10 @@
     Message
       {cards} data frame: 1 x 15
     Output
-        group1 group1_level group2 group2_level group3 group3_level variable
-      1   TRTA      Placebo  AESEV         MILD  AESOC    CARDIAC …  AEDECOD
-        variable_level stat_name stat_label stat
-      1      ATRIAL F…         n          n    0
+        group1 group1_level group2 group2_level group3     group3_level variable
+      1   TRTA      Placebo  AESEV         MILD  AESOC CARDIAC <U+2026>  AEDECOD
+          variable_level stat_name stat_label stat
+      1 ATRIAL F<U+2026>         n          n    0
     Message
       i 4 more variables: context, fmt_fun, warning, error
 
@@ -58,7 +58,7 @@
     Code
       class(ard_heir_no_by)
     Output
-      [1] "card"       "tbl_df"     "tbl"        "data.frame"
+      [1] "card"       "data.frame"
 
 # ard_hierarchical_count() works without any variables
 

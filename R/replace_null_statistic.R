@@ -32,16 +32,22 @@ replace_null_statistic <- function(x, value = NA, rows = TRUE) {
   check_class(x, "card")
 
   # replace NULL values --------------------------------------------------------
+  # base R lapply instead of dplyr::rowwise + dplyr::mutate
+  # (rowwise mutate creates a DataMask per row, which is very expensive)
+  rows_mask <- rlang::eval_tidy(rlang::enquo(rows), data = x)
+  if (is.logical(rows_mask) && length(rows_mask) == 1L) {
+    rows_mask <- rep(rows_mask, nrow(x))
+  }
+  stat_col <- x[["stat"]]
+  for (i in which(rows_mask)) {
+    if (is.null(stat_col[[i]])) {
+      stat_col[[i]] <- value
+    }
+  }
+  x[["stat"]] <- stat_col
+
+  # restore previous grouping structure and original class of x
   x |>
-    dplyr::rowwise() |>
-    dplyr::mutate(
-      # styler: off
-      stat =
-        if (is.null(.data$stat) && {{ rows }}) list(.env$value)
-        else list(.data$stat)
-      # styler: on
-    ) |>
-    # restore previous grouping structure and original class of x
     dplyr::group_by(dplyr::pick(dplyr::group_vars(x))) |>
     structure(class = class(x))
 }

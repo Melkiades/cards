@@ -3,14 +3,14 @@
     Code
       class(ard_cat_uni)
     Output
-      [1] "card"       "tbl_df"     "tbl"        "data.frame"
+      [1] "card"       "data.frame"
 
 # ard_tabulate() univariate & specified denomiator
 
     Code
       class(ard_cat_new_denom)
     Output
-      [1] "card"       "tbl_df"     "tbl"        "data.frame"
+      [1] "card"       "data.frame"
 
 # ard_tabulate(fmt_fun) argument works
 

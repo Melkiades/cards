@@ -278,70 +278,103 @@ ard_tabulate.data.frame <- function(data,
     )
 
   # perform other counts
-  df_result_tabulation <-
-    imap(
-      statistics_tabulation,
-      function(tab_stats, variable) {
-        df_result_tabulation <-
-          .table_as_df(data, variable = variable, by = by, strata = strata, count_column = "...ard_n...")
-        if (!is_empty(lst_denominator[[variable]])) {
-          df_result_tabulation <-
-            if (is_empty(intersect(names(df_result_tabulation), names(lst_denominator[[variable]])))) {
-              dplyr::cross_join(
-                df_result_tabulation,
-                lst_denominator[[variable]]
-              )
-            } else {
-              suppressMessages(dplyr::left_join(
-                df_result_tabulation,
-                lst_denominator[[variable]]
-              ))
-            }
+  # base R reshape instead of per-variable dplyr::mutate + tidyr::pivot_longer +
+  # dplyr::filter pipeline (avoids repeated tidyselect evaluation overhead)
+  tab_parts <- vector("list", length(statistics_tabulation))
+  tab_variables <- names(statistics_tabulation)
+  for (ti in seq_along(statistics_tabulation)) {
+    variable <- tab_variables[[ti]]
+    tab_stats <- statistics_tabulation[[ti]]
+
+    df_tab <-
+      .table_as_df(data, variable = variable, by = by, strata = strata, count_column = "...ard_n...")
+    if (!is_empty(lst_denominator[[variable]])) {
+      df_tab <-
+        if (is_empty(intersect(names(df_tab), names(lst_denominator[[variable]])))) {
+          dplyr::cross_join(df_tab, lst_denominator[[variable]])
+        } else {
+          suppressMessages(dplyr::left_join(df_tab, lst_denominator[[variable]]))
         }
-        if (any(c("p", "p_cum") %in% tab_stats[["tabulation"]])) {
-          df_result_tabulation <-
-            df_result_tabulation |>
-            dplyr::mutate(
-              ...ard_p... = .data$...ard_n... / .data$...ard_N...
-            )
-        }
+    }
+    if (any(c("p", "p_cum") %in% tab_stats[["tabulation"]])) {
+      df_tab[["...ard_p..."]] <- df_tab[["...ard_n..."]] / df_tab[["...ard_N..."]]
+    }
 
-        df_result_tabulation <-
-          .add_cum_count_stats(
-            df_result_tabulation,
-            variable = variable,
-            by = by,
-            strata = strata,
-            denominator = denominator,
-            tab_stats = tab_stats
-          )
+    df_tab <-
+      .add_cum_count_stats(
+        df_tab,
+        variable = variable,
+        by = by,
+        strata = strata,
+        denominator = denominator,
+        tab_stats = tab_stats
+      )
 
-        df_result_tabulation |>
-          .nesting_rename_ard_columns(variable = variable, by = by, strata = strata) |>
-          dplyr::mutate(
-            across(any_of(c("...ard_n...", "...ard_N...", "...ard_p...", "...ard_n_cum...", "...ard_p_cum...")), as.list),
-            across(c(matches("^group[0-9]+_level$"), any_of("variable_level")), as.list)
-          ) |>
-          tidyr::pivot_longer(
-            cols = any_of(c("...ard_n...", "...ard_N...", "...ard_p...", "...ard_n_cum...", "...ard_p_cum...")),
-            names_to = "stat_name",
-            values_to = "stat"
-          ) |>
-          dplyr::mutate(
-            stat_name =
-              gsub(pattern = "^...ard_", replacement = "", x = .data$stat_name) %>%
-                gsub(pattern = "...$", replacement = "", x = .)
-          ) |>
-          dplyr::filter(.data$stat_name %in% tab_stats[["tabulation"]])
-      }
-    ) |>
-    dplyr::bind_rows()
-
-  df_result_tabulation |>
-    dplyr::mutate(
-      warning = list(NULL),
-      error = list(NULL)
+    # reshape: rename columns to ARD structure, then pivot stat columns to long
+    # This replaces .nesting_rename_ard_columns + dplyr::mutate(across(as.list)) +
+    # tidyr::pivot_longer + dplyr::mutate(gsub) + dplyr::filter
+    requested <- tab_stats[["tabulation"]]
+    stat_col_map <- c(
+      "...ard_n..." = "n", "...ard_N..." = "N", "...ard_p..." = "p",
+      "...ard_n_cum..." = "n_cum", "...ard_p_cum..." = "p_cum"
     )
+    present_stat_cols <- intersect(names(stat_col_map), names(df_tab))
+    keep_stats <- stat_col_map[present_stat_cols]
+    keep_mask <- keep_stats %in% requested
+    present_stat_cols <- present_stat_cols[keep_mask]
+    keep_stats <- keep_stats[keep_mask]
+
+    if (length(present_stat_cols) == 0L) next
+
+    nr <- nrow(df_tab)
+    n_stats <- length(present_stat_cols)
+    n_out <- nr * n_stats
+
+    # build group columns
+    grp_by_strata <- c(by, strata)
+    n_grp <- length(grp_by_strata)
+    out <- vector("list", n_grp * 2L + 5L)
+    out_names <- character(n_grp * 2L + 5L)
+    idx <- 0L
+    for (gi in seq_along(grp_by_strata)) {
+      idx <- idx + 1L
+      out_names[[idx]] <- paste0("group", gi)
+      out[[idx]] <- rep(grp_by_strata[[gi]], n_out)
+      idx <- idx + 1L
+      out_names[[idx]] <- paste0("group", gi, "_level")
+      out[[idx]] <- rep(lapply(df_tab[[grp_by_strata[[gi]]]], identity), each = n_stats)
+    }
+    idx <- idx + 1L
+    out_names[[idx]] <- "variable"
+    out[[idx]] <- rep(variable, n_out)
+    idx <- idx + 1L
+    out_names[[idx]] <- "variable_level"
+    out[[idx]] <- rep(lapply(df_tab[[variable]], identity), each = n_stats)
+    idx <- idx + 1L
+    out_names[[idx]] <- "stat_name"
+    out[[idx]] <- rep(keep_stats, nr)
+    idx <- idx + 1L
+    out_names[[idx]] <- "stat"
+    stat_vals <- vector("list", n_out)
+    for (si in seq_along(present_stat_cols)) {
+      col_vals <- df_tab[[present_stat_cols[[si]]]]
+      for (ri in seq_len(nr)) {
+        stat_vals[[(ri - 1L) * n_stats + si]] <- col_vals[[ri]]
+      }
+    }
+    out[[idx]] <- stat_vals
+
+    out <- out[seq_len(idx)]
+    names(out) <- out_names[seq_len(idx)]
+    tab_parts[[ti]] <- vctrs::new_data_frame(out)
+  }
+
+  df_result_tabulation <- vctrs::vec_rbind(!!!Filter(Negate(is.null), tab_parts))
+  rownames(df_result_tabulation) <- NULL
+
+  df_result_tabulation[["warning"]] <- rep(list(NULL), nrow(df_result_tabulation))
+  df_result_tabulation[["error"]] <- rep(list(NULL), nrow(df_result_tabulation))
+  tidy_ard_column_order(df_result_tabulation)
 }
 
 .check_whether_na_counts <- function(data) {

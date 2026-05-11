@@ -123,10 +123,10 @@
     Message
       {cards} data frame: 3 x 8
     Output
-        variable context stat_name stat_label      stat fmt_fun
-      1 DISONSDT summary       min        Min 1998-06-…    <fn>
-      2 DISONSDT summary       max        Max 2013-09-…    <fn>
-      3 DISONSDT summary        sd         SD   878.558       1
+        variable context stat_name stat_label             stat fmt_fun
+      1 DISONSDT summary       min        Min 1998-06-<U+2026>    <fn>
+      2 DISONSDT summary       max        Max 2013-09-<U+2026>    <fn>
+      3 DISONSDT summary        sd         SD          878.558       1
     Message
       i 2 more variables: warning, error
 

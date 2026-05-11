@@ -3,7 +3,7 @@
     Code
       class(ard_dich)
     Output
-      [1] "card"       "tbl_df"     "tbl"        "data.frame"
+      [1] "card"       "data.frame"
 
 ---
 

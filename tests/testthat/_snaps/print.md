@@ -5,17 +5,17 @@
     Message
       {cards} data frame: 24 x 10
     Output
-         group1 group1_level variable stat_name stat_label   stat
-      1     ARM      Placebo      AGE         N          N     86
-      2     ARM      Placebo      AGE      mean       Mean 75.209
-      3     ARM      Placebo      AGE        sd         SD   8.59
-      4     ARM      Placebo      AGE    median     Median     76
-      5     ARM      Placebo      AGE       p25         Q1     69
-      6     ARM      Placebo      AGE       p75         Q3     82
-      7     ARM      Placebo      AGE       min        Min     52
-      8     ARM      Placebo      AGE       max        Max     89
-      9     ARM    Xanomeli…      AGE         N          N     84
-      10    ARM    Xanomeli…      AGE      mean       Mean 74.381
+         group1     group1_level variable stat_name stat_label   stat
+      1     ARM          Placebo      AGE         N          N     86
+      2     ARM          Placebo      AGE      mean       Mean 75.209
+      3     ARM          Placebo      AGE        sd         SD   8.59
+      4     ARM          Placebo      AGE    median     Median     76
+      5     ARM          Placebo      AGE       p25         Q1     69
+      6     ARM          Placebo      AGE       p75         Q3     82
+      7     ARM          Placebo      AGE       min        Min     52
+      8     ARM          Placebo      AGE       max        Max     89
+      9     ARM Xanomeli<U+2026>      AGE         N          N     84
+      10    ARM Xanomeli<U+2026>      AGE      mean       Mean 74.381
     Message
       i 14 more rows
       i Use `print(n = ...)` to see more rows
@@ -28,17 +28,17 @@
     Message
       {cards} data frame: 27 x 11
     Output
-         group1 group1_level variable variable_level stat_name stat_label  stat
-      1     ARM      Placebo   AGEGR1          65-80         n          n    42
-      2     ARM      Placebo   AGEGR1          65-80         N          N    86
-      3     ARM      Placebo   AGEGR1          65-80         p          % 0.488
-      4     ARM      Placebo   AGEGR1            <65         n          n    14
-      5     ARM      Placebo   AGEGR1            <65         N          N    86
-      6     ARM      Placebo   AGEGR1            <65         p          % 0.163
-      7     ARM      Placebo   AGEGR1            >80         n          n    30
-      8     ARM      Placebo   AGEGR1            >80         N          N    86
-      9     ARM      Placebo   AGEGR1            >80         p          % 0.349
-      10    ARM    Xanomeli…   AGEGR1          65-80         n          n    55
+         group1     group1_level variable variable_level stat_name stat_label  stat
+      1     ARM          Placebo   AGEGR1          65-80         n          n    42
+      2     ARM          Placebo   AGEGR1          65-80         N          N    86
+      3     ARM          Placebo   AGEGR1          65-80         p          % 0.488
+      4     ARM          Placebo   AGEGR1            <65         n          n    14
+      5     ARM          Placebo   AGEGR1            <65         N          N    86
+      6     ARM          Placebo   AGEGR1            <65         p          % 0.163
+      7     ARM          Placebo   AGEGR1            >80         n          n    30
+      8     ARM          Placebo   AGEGR1            >80         N          N    86
+      9     ARM          Placebo   AGEGR1            >80         p          % 0.349
+      10    ARM Xanomeli<U+2026>   AGEGR1          65-80         n          n    55
     Message
       i 17 more rows
       i Use `print(n = ...)` to see more rows
@@ -73,10 +73,10 @@
     Message
       {cards} data frame: 3 x 7
     Output
-        variable context stat_name stat_label      stat error
-      1        x summary       min        Min 2000-01-…      
-      2        x summary       max        Max 2000-01-…      
-      3        x summary        sd         SD     3.028      
+        variable context stat_name stat_label             stat error
+      1        x summary       min        Min 2000-01-<U+2026>      
+      2        x summary       max        Max 2000-01-<U+2026>      
+      3        x summary        sd         SD            3.028      
     Message
       i 1 more variable: warning
 
@@ -89,11 +89,16 @@
     Message
       {cards} data frame: 4 x 8
     Output
-        variable   context stat_name stat_label                         stat fmt_fun
-      1      mpg attribut…     label  Variable…                          mpg    <fn>
-      2      mpg attribut…     class  Variable…                      numeric    NULL
-      3      mpg   summary      mean       Mean                       20.091       1
-      4      mpg   summary      vcov       vcov 1.265, -1.265, -1.265, 3.113       1
+        variable          context stat_name       stat_label
+      1      mpg attribut<U+2026>     label Variable<U+2026>
+      2      mpg attribut<U+2026>     class Variable<U+2026>
+      3      mpg          summary      mean             Mean
+      4      mpg          summary      vcov             vcov
+                                stat fmt_fun
+      1                          mpg    <fn>
+      2                      numeric    NULL
+      3                       20.091       1
+      4 1.265, -1.265, -1.265, 3.113       1
     Message
       i 2 more variables: warning, error
 

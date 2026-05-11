@@ -111,25 +111,25 @@
     Message
       {cards} data frame: 18 x 15
     Output
-         group1 group1_level group2 group2_level group3 group3_level variable variable_level stat_name stat_label stat
-      1   AESEV         MILD   <NA>                <NA>                 AESOC      GENERAL …         n          n    4
-      2   AESEV     MODERATE   <NA>                <NA>                 AESOC      GENERAL …         n          n    0
-      3    <NA>                <NA>                <NA>                 AESOC      GENERAL …         n          n    4
-      4   AESEV         MILD  AESOC    GENERAL …   <NA>               AEDECOD      APPLICAT…         n          n    2
-      5   AESEV     MODERATE  AESOC    GENERAL …   <NA>               AEDECOD      APPLICAT…         n          n    0
-      6   AESOC    GENERAL …   <NA>                <NA>               AEDECOD      APPLICAT…         n          n    2
-      7   AESEV         MILD  AESOC    GENERAL …   <NA>               AEDECOD      APPLICAT…         n          n    2
-      8   AESEV     MODERATE  AESOC    GENERAL …   <NA>               AEDECOD      APPLICAT…         n          n    0
-      9   AESOC    GENERAL …   <NA>                <NA>               AEDECOD      APPLICAT…         n          n    2
-      10  AESEV         MILD   <NA>                <NA>                 AESOC      SKIN AND…         n          n    1
-      11  AESEV     MODERATE   <NA>                <NA>                 AESOC      SKIN AND…         n          n    1
-      12   <NA>                <NA>                <NA>                 AESOC      SKIN AND…         n          n    2
-      13  AESEV         MILD  AESOC    SKIN AND…   <NA>               AEDECOD       ERYTHEMA         n          n    1
-      14  AESEV     MODERATE  AESOC    SKIN AND…   <NA>               AEDECOD       ERYTHEMA         n          n    0
-      15  AESOC    SKIN AND…   <NA>                <NA>               AEDECOD       ERYTHEMA         n          n    1
-      16  AESEV         MILD  AESOC    SKIN AND…   <NA>               AEDECOD      PRURITUS…         n          n    0
-      17  AESEV     MODERATE  AESOC    SKIN AND…   <NA>               AEDECOD      PRURITUS…         n          n    1
-      18  AESOC    SKIN AND…   <NA>                <NA>               AEDECOD      PRURITUS…         n          n    1
+         group1     group1_level group2     group2_level group3 group3_level variable   variable_level stat_name stat_label stat
+      1   AESEV             MILD   <NA>                    <NA>                 AESOC GENERAL <U+2026>         n          n    4
+      2   AESEV         MODERATE   <NA>                    <NA>                 AESOC GENERAL <U+2026>         n          n    0
+      3    <NA>                    <NA>                    <NA>                 AESOC GENERAL <U+2026>         n          n    4
+      4   AESEV             MILD  AESOC GENERAL <U+2026>   <NA>               AEDECOD APPLICAT<U+2026>         n          n    2
+      5   AESEV         MODERATE  AESOC GENERAL <U+2026>   <NA>               AEDECOD APPLICAT<U+2026>         n          n    0
+      6   AESOC GENERAL <U+2026>   <NA>                    <NA>               AEDECOD APPLICAT<U+2026>         n          n    2
+      7   AESEV             MILD  AESOC GENERAL <U+2026>   <NA>               AEDECOD APPLICAT<U+2026>         n          n    2
+      8   AESEV         MODERATE  AESOC GENERAL <U+2026>   <NA>               AEDECOD APPLICAT<U+2026>         n          n    0
+      9   AESOC GENERAL <U+2026>   <NA>                    <NA>               AEDECOD APPLICAT<U+2026>         n          n    2
+      10  AESEV             MILD   <NA>                    <NA>                 AESOC SKIN AND<U+2026>         n          n    1
+      11  AESEV         MODERATE   <NA>                    <NA>                 AESOC SKIN AND<U+2026>         n          n    1
+      12   <NA>                    <NA>                    <NA>                 AESOC SKIN AND<U+2026>         n          n    2
+      13  AESEV             MILD  AESOC SKIN AND<U+2026>   <NA>               AEDECOD         ERYTHEMA         n          n    1
+      14  AESEV         MODERATE  AESOC SKIN AND<U+2026>   <NA>               AEDECOD         ERYTHEMA         n          n    0
+      15  AESOC SKIN AND<U+2026>   <NA>                    <NA>               AEDECOD         ERYTHEMA         n          n    1
+      16  AESEV             MILD  AESOC SKIN AND<U+2026>   <NA>               AEDECOD PRURITUS<U+2026>         n          n    0
+      17  AESEV         MODERATE  AESOC SKIN AND<U+2026>   <NA>               AEDECOD PRURITUS<U+2026>         n          n    1
+      18  AESOC SKIN AND<U+2026>   <NA>                    <NA>               AEDECOD PRURITUS<U+2026>         n          n    1
     Message
       i 4 more variables: context, fmt_fun, warning, error
 
@@ -153,17 +153,17 @@
     Message
       {cards} data frame: 21 x 15
     Output
-         group1 group1_level group2 group2_level group3 group3_level                     variable variable_level stat_name stat_label stat
-      1   AESEV         MILD   <NA>                <NA>              ..ard_hierarchical_overall..           TRUE         n          n    5
-      2   AESEV     MODERATE   <NA>                <NA>              ..ard_hierarchical_overall..           TRUE         n          n    1
-      3    <NA>                <NA>                <NA>              ..ard_hierarchical_overall..           TRUE         n          n    6
-      4   AESEV         MILD   <NA>                <NA>                                     AESOC      GENERAL …         n          n    4
-      5   AESEV     MODERATE   <NA>                <NA>                                     AESOC      GENERAL …         n          n    0
-      6    <NA>                <NA>                <NA>                                     AESOC      GENERAL …         n          n    4
-      7   AESEV         MILD  AESOC    GENERAL …   <NA>                                   AEDECOD      APPLICAT…         n          n    2
-      8   AESEV     MODERATE  AESOC    GENERAL …   <NA>                                   AEDECOD      APPLICAT…         n          n    0
-      9   AESOC    GENERAL …   <NA>                <NA>                                   AEDECOD      APPLICAT…         n          n    2
-      10  AESEV         MILD  AESOC    GENERAL …   <NA>                                   AEDECOD      APPLICAT…         n          n    2
+         group1     group1_level group2     group2_level group3 group3_level                     variable   variable_level stat_name stat_label stat
+      1   AESEV             MILD   <NA>                    <NA>              ..ard_hierarchical_overall..             TRUE         n          n    5
+      2   AESEV         MODERATE   <NA>                    <NA>              ..ard_hierarchical_overall..             TRUE         n          n    1
+      3    <NA>                    <NA>                    <NA>              ..ard_hierarchical_overall..             TRUE         n          n    6
+      4   AESEV             MILD   <NA>                    <NA>                                     AESOC GENERAL <U+2026>         n          n    4
+      5   AESEV         MODERATE   <NA>                    <NA>                                     AESOC GENERAL <U+2026>         n          n    0
+      6    <NA>                    <NA>                    <NA>                                     AESOC GENERAL <U+2026>         n          n    4
+      7   AESEV             MILD  AESOC GENERAL <U+2026>   <NA>                                   AEDECOD APPLICAT<U+2026>         n          n    2
+      8   AESEV         MODERATE  AESOC GENERAL <U+2026>   <NA>                                   AEDECOD APPLICAT<U+2026>         n          n    0
+      9   AESOC GENERAL <U+2026>   <NA>                    <NA>                                   AEDECOD APPLICAT<U+2026>         n          n    2
+      10  AESEV             MILD  AESOC GENERAL <U+2026>   <NA>                                   AEDECOD APPLICAT<U+2026>         n          n    2
     Message
       i 11 more rows
       i Use `print(n = ...)` to see more rows

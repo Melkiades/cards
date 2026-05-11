@@ -6,17 +6,17 @@
     Message
       {cards} data frame: 27 x 12
     Output
-         group1 group1_level variable variable_level stat_name stat_label stat stat_fmt
-      1    TRTA      Placebo   AGEGR1            <65         n          n            xx
-      2    TRTA      Placebo   AGEGR1            <65         p          %          xx.x
-      3    TRTA      Placebo   AGEGR1            <65         N          N            xx
-      4    TRTA      Placebo   AGEGR1          65-80         n          n            xx
-      5    TRTA      Placebo   AGEGR1          65-80         p          %          xx.x
-      6    TRTA      Placebo   AGEGR1          65-80         N          N            xx
-      7    TRTA      Placebo   AGEGR1            >80         n          n            xx
-      8    TRTA      Placebo   AGEGR1            >80         p          %          xx.x
-      9    TRTA      Placebo   AGEGR1            >80         N          N            xx
-      10   TRTA    Xanomeli…   AGEGR1            <65         n          n            xx
+         group1     group1_level variable variable_level stat_name stat_label stat stat_fmt
+      1    TRTA          Placebo   AGEGR1            <65         n          n            xx
+      2    TRTA          Placebo   AGEGR1            <65         p          %          xx.x
+      3    TRTA          Placebo   AGEGR1            <65         N          N            xx
+      4    TRTA          Placebo   AGEGR1          65-80         n          n            xx
+      5    TRTA          Placebo   AGEGR1          65-80         p          %          xx.x
+      6    TRTA          Placebo   AGEGR1          65-80         N          N            xx
+      7    TRTA          Placebo   AGEGR1            >80         n          n            xx
+      8    TRTA          Placebo   AGEGR1            >80         p          %          xx.x
+      9    TRTA          Placebo   AGEGR1            >80         N          N            xx
+      10   TRTA Xanomeli<U+2026>   AGEGR1            <65         n          n            xx
     Message
       i 17 more rows
       i Use `print(n = ...)` to see more rows
@@ -38,23 +38,23 @@
     Message
       {cards} data frame: 16 x 9
     Output
-         variable   context stat_name stat_label stat stat_fmt
-      1       AGE continuo…         N          N            xx
-      2       AGE continuo…      mean       Mean          xx.x
-      3       AGE continuo…        sd         SD          xx.x
-      4       AGE continuo…    median     Median          xx.x
-      5       AGE continuo…       p25         Q1          xx.x
-      6       AGE continuo…       p75         Q3          xx.x
-      7       AGE continuo…       min        Min          xx.x
-      8       AGE continuo…       max        Max          xx.x
-      9     BMIBL continuo…         N          N            xx
-      10    BMIBL continuo…      mean       Mean          xx.x
-      11    BMIBL continuo…        sd         SD          xx.x
-      12    BMIBL continuo…    median     Median          xx.x
-      13    BMIBL continuo…       p25         Q1          xx.x
-      14    BMIBL continuo…       p75         Q3          xx.x
-      15    BMIBL continuo…       min        Min          xx.x
-      16    BMIBL continuo…       max        Max          xx.x
+         variable          context stat_name stat_label stat stat_fmt
+      1       AGE continuo<U+2026>         N          N            xx
+      2       AGE continuo<U+2026>      mean       Mean          xx.x
+      3       AGE continuo<U+2026>        sd         SD          xx.x
+      4       AGE continuo<U+2026>    median     Median          xx.x
+      5       AGE continuo<U+2026>       p25         Q1          xx.x
+      6       AGE continuo<U+2026>       p75         Q3          xx.x
+      7       AGE continuo<U+2026>       min        Min          xx.x
+      8       AGE continuo<U+2026>       max        Max          xx.x
+      9     BMIBL continuo<U+2026>         N          N            xx
+      10    BMIBL continuo<U+2026>      mean       Mean          xx.x
+      11    BMIBL continuo<U+2026>        sd         SD          xx.x
+      12    BMIBL continuo<U+2026>    median     Median          xx.x
+      13    BMIBL continuo<U+2026>       p25         Q1          xx.x
+      14    BMIBL continuo<U+2026>       p75         Q3          xx.x
+      15    BMIBL continuo<U+2026>       min        Min          xx.x
+      16    BMIBL continuo<U+2026>       max        Max          xx.x
     Message
       i 3 more variables: fmt_fun, warning, error
 
@@ -74,16 +74,16 @@
     Message
       {cards} data frame: 9 x 12
     Output
-        group1 group1_level variable variable_level stat_name stat_label stat stat_fmt
-      1   TRTA      Placebo   AGEGR1          65-80         n          n            xx
-      2   TRTA      Placebo   AGEGR1          65-80         p          %          xx.x
-      3   TRTA      Placebo   AGEGR1          65-80         N          N            xx
-      4   TRTA    Xanomeli…   AGEGR1          65-80         n          n            xx
-      5   TRTA    Xanomeli…   AGEGR1          65-80         p          %          xx.x
-      6   TRTA    Xanomeli…   AGEGR1          65-80         N          N            xx
-      7   TRTA    Xanomeli…   AGEGR1          65-80         n          n            xx
-      8   TRTA    Xanomeli…   AGEGR1          65-80         p          %          xx.x
-      9   TRTA    Xanomeli…   AGEGR1          65-80         N          N            xx
+        group1     group1_level variable variable_level stat_name stat_label stat stat_fmt
+      1   TRTA          Placebo   AGEGR1          65-80         n          n            xx
+      2   TRTA          Placebo   AGEGR1          65-80         p          %          xx.x
+      3   TRTA          Placebo   AGEGR1          65-80         N          N            xx
+      4   TRTA Xanomeli<U+2026>   AGEGR1          65-80         n          n            xx
+      5   TRTA Xanomeli<U+2026>   AGEGR1          65-80         p          %          xx.x
+      6   TRTA Xanomeli<U+2026>   AGEGR1          65-80         N          N            xx
+      7   TRTA Xanomeli<U+2026>   AGEGR1          65-80         n          n            xx
+      8   TRTA Xanomeli<U+2026>   AGEGR1          65-80         p          %          xx.x
+      9   TRTA Xanomeli<U+2026>   AGEGR1          65-80         N          N            xx
     Message
       i 4 more variables: context, fmt_fun, warning, error
 
@@ -104,17 +104,17 @@
     Message
       {cards} data frame: 10 x 9
     Output
-         variable context stat_name stat_label stat stat_fmt
-      1       AGE missing     N_obs  Vector L…            xx
-      2       AGE missing    N_miss  N Missing            xx
-      3       AGE missing N_nonmiss  N Non-mi…            xx
-      4       AGE missing    p_miss  % Missing          xx.x
-      5       AGE missing p_nonmiss  % Non-mi…          xx.x
-      6     BMIBL missing     N_obs  Vector L…            xx
-      7     BMIBL missing    N_miss  N Missing            xx
-      8     BMIBL missing N_nonmiss  N Non-mi…            xx
-      9     BMIBL missing    p_miss  % Missing          xx.x
-      10    BMIBL missing p_nonmiss  % Non-mi…          xx.x
+         variable context stat_name       stat_label stat stat_fmt
+      1       AGE missing     N_obs Vector L<U+2026>            xx
+      2       AGE missing    N_miss        N Missing            xx
+      3       AGE missing N_nonmiss N Non-mi<U+2026>            xx
+      4       AGE missing    p_miss        % Missing          xx.x
+      5       AGE missing p_nonmiss % Non-mi<U+2026>          xx.x
+      6     BMIBL missing     N_obs Vector L<U+2026>            xx
+      7     BMIBL missing    N_miss        N Missing            xx
+      8     BMIBL missing N_nonmiss N Non-mi<U+2026>            xx
+      9     BMIBL missing    p_miss        % Missing          xx.x
+      10    BMIBL missing p_nonmiss % Non-mi<U+2026>          xx.x
     Message
       i 3 more variables: fmt_fun, warning, error
 
@@ -133,11 +133,11 @@
     Message
       {cards} data frame: 4 x 8
     Output
-        variable   context stat_name stat_label      stat fmt_fun
-      1      AGE attribut…     label  Variable…       Age    <fn>
-      2      AGE attribut…     class  Variable…   logical    NULL
-      3    BMIBL attribut…     label  Variable… Baseline…    <fn>
-      4    BMIBL attribut…     class  Variable…   logical    NULL
+        variable          context stat_name       stat_label             stat fmt_fun
+      1      AGE attribut<U+2026>     label Variable<U+2026>              Age    <fn>
+      2      AGE attribut<U+2026>     class Variable<U+2026>          logical    NULL
+      3    BMIBL attribut<U+2026>     label Variable<U+2026> Baseline<U+2026>    <fn>
+      4    BMIBL attribut<U+2026>     class Variable<U+2026>          logical    NULL
     Message
       i 2 more variables: warning, error
 

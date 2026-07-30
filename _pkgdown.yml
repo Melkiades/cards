@@ -1,6 +1,8 @@
 ---
 url: https://pharmaverse.github.io/cards
 
+template:
+  package: nesttemplate
 
 navbar:
   structure:

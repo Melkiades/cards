@@ -359,6 +359,24 @@ internal_stack_hierarchical <- function(
         )
       cli::cli_inform(c("i" = msg))
     }
+    # message only if rows are actually dropped because `by` includes a column
+    # not in `denominator` (i.e. a subject has multiple values of that column
+    # within an `id`/`variables` group, so only the last is kept, see #525)
+    by_not_in_denom <- setdiff(by, denom_cols)
+    if (!is_empty(by_not_in_denom)) {
+      keep_last <-
+        !duplicated(vctrs::vec_group_id(data[c(id, denom_cols, variables)]), fromLast = TRUE)
+      keep_last_full <-
+        !duplicated(vctrs::vec_group_id(data[c(id, by, variables)]), fromLast = TRUE)
+      n_dropped <- sum(keep_last_full) - sum(keep_last)
+      if (n_dropped > 0L) {
+        cli::cli_inform(c(
+          "i" = "Because {.val {by_not_in_denom}} in the {.arg by} argument {cli::qty(by_not_in_denom)}{?is/are} not present in the {.arg denominator}, rows of {.arg data} were removed while calculating rates.",
+          "*" = "Subjects with multiple {.val {by_not_in_denom}} values will only be counted once, in the last level after sorting.",
+          "*" = "See {.help [cards::ard_stack_hierarchical()](cards::ard_stack_hierarchical)} for details."
+        ))
+      }
+    }
   }
 
   # go about calculating the statistics within the variables -------------------

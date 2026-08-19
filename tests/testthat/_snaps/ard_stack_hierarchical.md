@@ -33,6 +33,16 @@
       Error in `ard_stack_hierarchical()`:
       ! Argument `id` cannot be empty.
 
+# ard_stack_hierarchical(by)
+
+    Code
+      expect_message(ard_stack_hierarchical(cards::ADAE, variables = c(AESOC, AEDECOD),
+      by = c(TRTA, TRTEMFL, AESEV), id = USUBJID, denominator = ADSL))
+    Message
+      i Because "TRTEMFL" and "AESEV" in the `by` argument are not present in the `denominator`, rows of `data` were removed while calculating rates.
+      * Subjects with multiple "TRTEMFL" and "AESEV" values will only be counted once, in the last level after sorting.
+      * See cards::ard_stack_hierarchical() (`?cards::ard_stack_hierarchical()`) for details.
+
 # ard_stack_hierarchical(by) messaging
 
     Code
@@ -58,6 +68,35 @@
     Condition
       Error in `ard_stack_hierarchical()`:
       ! The `denominator` argument cannot be missing.
+
+# ard_stack_hierarchical(by) with columns not in `denominator`
+
+    Code
+      ard_stack_hierarchical(data = ADAE_small_bind, by = c(TRTA, AESEV), variables = c(
+        AESOC, AEDECOD), statistic = ~"n", denominator = ADSL, id = USUBJID,
+      by_stats = FALSE)
+    Message
+      i Denominator set by "TRTA" column in `denominator` data frame.
+      i Because "AESEV" in the `by` argument is not present in the `denominator`, rows of `data` were removed while calculating rates.
+      * Subjects with multiple "AESEV" values will only be counted once, in the last level after sorting.
+      * See cards::ard_stack_hierarchical() (`?cards::ard_stack_hierarchical()`) for details.
+    Output
+      # An ARD data frame: 36 x 15
+         group1 group1_level         group2 group2_level group3 group3_level  variable
+         <chr>  <list>               <chr>  <list>       <chr>  <list>        <chr>   
+       1 TRTA   Placebo              AESEV  MILD         AESOC  GENERAL DISO~ AEDECOD 
+       2 TRTA   Xanomeline High Dose AESEV  MILD         AESOC  GENERAL DISO~ AEDECOD 
+       3 TRTA   Xanomeline Low Dose  AESEV  MILD         AESOC  GENERAL DISO~ AEDECOD 
+       4 TRTA   Placebo              AESEV  MILD         AESOC  GENERAL DISO~ AEDECOD 
+       5 TRTA   Xanomeline High Dose AESEV  MILD         AESOC  GENERAL DISO~ AEDECOD 
+       6 TRTA   Xanomeline Low Dose  AESEV  MILD         AESOC  GENERAL DISO~ AEDECOD 
+       7 TRTA   Placebo              AESEV  MILD         AESOC  SKIN AND SUB~ AEDECOD 
+       8 TRTA   Xanomeline High Dose AESEV  MILD         AESOC  SKIN AND SUB~ AEDECOD 
+       9 TRTA   Xanomeline Low Dose  AESEV  MILD         AESOC  SKIN AND SUB~ AEDECOD 
+      10 TRTA   Placebo              AESEV  MILD         AESOC  SKIN AND SUB~ AEDECOD 
+      # i 26 more rows
+      # i 8 more variables: variable_level <list>, context <chr>, stat_name <chr>,
+      #   stat_label <chr>, stat <list>, fmt_fun <list>, warning <list>, error <list>
 
 # ard_stack_hierarchical(variables, include) messaging
 

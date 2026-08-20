@@ -91,18 +91,15 @@ The AE rate process is repeated for SOC.
 
 ```{r}
 ard_ae |>
-  filter(variable == "AESOC") |>
-  select(-all_missing_columns())
+  filter(variable == "AESOC")
 ```
 
 **Any AE Rates**
-
 The process is then repeated to calculate rates of any adverse event.
 
 ```{r}
 ard_ae |>
-  filter(variable == "..ard_hierarchical_overall..") |>
-  select(-all_missing_columns())
+  filter(variable == "..ard_hierarchical_overall..")
 ```
 
 **Treatment Counts**
@@ -111,8 +108,7 @@ Finally, a univariate tabulation of the `TRTA` column from `ADSL` is included.
 
 ```{r}
 ard_ae |>
-  filter(variable == "TRTA") |>
-  select(-all_missing_columns())
+  filter(variable == "TRTA")
 ```
 
 <!-- TODO: Convert this to a qmd and add an aside about the stack function makes calls to other functions. -->

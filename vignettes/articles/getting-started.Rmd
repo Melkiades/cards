@@ -7,6 +7,7 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+options(pillar.print_min = 5)
 ```
 
 Suppose you need to create the table below, and need an ARD representation of the results to get started.
@@ -77,7 +78,7 @@ df_continuous_ard <-
       "max"
     ))
   )
-df_continuous_ard |> head(5)
+df_continuous_ard
 ```
 
 #### Categorical Summaries
@@ -91,7 +92,7 @@ df_categorical_ard <-
     by = ARM,
     variables = AGEGR1
   )
-df_categorical_ard |> head(5)
+df_categorical_ard
 ```
 
 #### Dichotomous Summaries
@@ -107,7 +108,7 @@ df_dichotomous_ard <-
     variables = SEX,
     value = list(SEX = "F")
   )
-df_dichotomous_ard |> head(5)
+df_dichotomous_ard
 ```
 
 #### Combine Results

@@ -11,8 +11,8 @@ Authors@R: c(
            comment = c(ORCID = "0000-0002-1445-1369")),
     person("Malan", "Bosman", , "malanbos@gmail.com", role = "aut",
            comment = c(ORCID = "0000-0002-3020-195X")),
-    person("F. Hoffmann-La Roche AG", role = c("cph", "fnd")),
     person("Alanah", "Jonas", , "alanah.x.jonas@gsk.com", role = "aut"),
+    person("F. Hoffmann-La Roche AG", role = c("cph", "fnd")),
     person("GlaxoSmithKline Research & Development Limited", role = "cph")
   )
 Description: Construct CDISC (Clinical Data Interchange Standards

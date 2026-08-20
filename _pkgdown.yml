@@ -23,7 +23,7 @@ navbar:
     - text: "Writing ARD Functions"
       href: articles/creating-ards.html
     - text: "Updating ARD Objects"
-      href: articles/update-ard.Rmd
+      href: articles/update-ard.html
     - text: "Other ARD Representations"
       href: articles/structures.html
   - text: News

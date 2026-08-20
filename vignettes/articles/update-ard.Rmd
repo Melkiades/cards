@@ -23,10 +23,8 @@ ARD (Analysis Results Data) objects are data frames that contain statistical sum
 ARD objects contain **list columns** such as `stat`, `fmt_fun`, `stat_label`, and others. List columns are columns where each cell can hold any R object—a number, a function, a vector, or even another data frame. If you're unfamiliar with list columns, they may look unusual when printed:
 
 ```{r}
-ard <- ard_summary(ADSL, variables = AGE) |>
-  select(variable, stat_name, stat, fmt_fun) |>
-  head(3)
-print(ard)
+ard <- ard_summary(ADSL, variables = AGE)
+ard
 ```
 
 While list columns can be updated just like any other column in a data frame, the syntax can be less intuitive. For example, to update the `fmt_fun` column for specific statistics, you might write:
@@ -67,8 +65,7 @@ ard_updated <- ard |>
   apply_fmt_fun()
 
 # View results
-ard_updated |>
-  select(stat_name, stat, stat_fmt)
+ard_updated
 ```
 
 ### Updating Statistic Labels

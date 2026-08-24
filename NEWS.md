@@ -1,5 +1,7 @@
 # cards 0.9.0.9000
 
+* Added `add_hierarchical_zero_rows()` to append zero-count rows for unobserved hierarchical levels (top-level categories and nested children) to a stacked hierarchical ARD, using a `mapping` of the expected level universe. (#602)
+
 # cards 0.9.0
 
 ## Performance

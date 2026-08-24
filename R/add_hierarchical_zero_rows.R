@@ -62,7 +62,19 @@
 #'   denominator = data.frame(USUBJID = sprintf("S%03d", 1:30))
 #' )
 #'
-#' # add an unobserved SOC ("Vascular") and an unobserved PT under "Cardiac"
+#' # top level only: add the unobserved SOC "Vascular" as a zero-row.
+#' # each parent maps to `character(0)` because no child rows are needed.
+#' ard |>
+#'   add_hierarchical_zero_rows(
+#'     variables = c(SOC, PT),
+#'     mapping = list(
+#'       Cardiac = character(0),
+#'       GI = character(0),
+#'       Vascular = character(0)
+#'     )
+#'   )
+#'
+#' # nested: add an unobserved SOC ("Vascular") and an unobserved PT under "Cardiac"
 #' ard |>
 #'   add_hierarchical_zero_rows(
 #'     variables = c(SOC, PT),

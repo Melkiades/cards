@@ -27,9 +27,9 @@ lvl1 <- function(col) {
   }, character(1L))
 }
 
-test_that("add_hierarchical_zero_rows(variables = SOC) completes the top level from factor levels", {
+test_that("add_hierarchical_unobserved_levels(variables = SOC) completes the top level from factor levels", {
   ard <- make_ard()
-  out <- add_hierarchical_zero_rows(ard, variables = SOC)
+  out <- add_hierarchical_unobserved_levels(ard, variables = SOC)
 
   expect_s3_class(out, "ard_stack_hierarchical")
   expect_setequal(
@@ -49,9 +49,9 @@ test_that("add_hierarchical_zero_rows(variables = SOC) completes the top level f
   )
 })
 
-test_that("add_hierarchical_zero_rows(variables = c(SOC, PT)) completes nested levels from factor levels", {
+test_that("add_hierarchical_unobserved_levels(variables = c(SOC, PT)) completes nested levels from factor levels", {
   ard <- make_ard()
-  out <- add_hierarchical_zero_rows(ard, variables = c(SOC, PT))
+  out <- add_hierarchical_unobserved_levels(ard, variables = c(SOC, PT))
 
   # top level recovered
   expect_true("Vascular" %in% lvl1(out$variable_level[out$variable == "SOC"]))
@@ -68,9 +68,9 @@ test_that("add_hierarchical_zero_rows(variables = c(SOC, PT)) completes nested l
   )
 })
 
-test_that("add_hierarchical_zero_rows() adds children of a missing parent", {
+test_that("add_hierarchical_unobserved_levels() adds children of a missing parent", {
   ard <- make_ard()
-  out <- add_hierarchical_zero_rows(
+  out <- add_hierarchical_unobserved_levels(
     ard,
     variables = c(SOC, PT),
     mapping = list(Vascular = c("PTX", "PTY"))
@@ -83,9 +83,9 @@ test_that("add_hierarchical_zero_rows() adds children of a missing parent", {
   ))
 })
 
-test_that("add_hierarchical_zero_rows() adds a missing child of an observed parent", {
+test_that("add_hierarchical_unobserved_levels() adds a missing child of an observed parent", {
   ard <- make_ard()
-  out <- add_hierarchical_zero_rows(
+  out <- add_hierarchical_unobserved_levels(
     ard,
     variables = c(SOC, PT),
     mapping = list(Cardiac = c("PT1", "PT2", "PT3"))
@@ -99,13 +99,13 @@ test_that("add_hierarchical_zero_rows() adds a missing child of an observed pare
   )
 })
 
-test_that("add_hierarchical_zero_rows() accepts a data.frame mapping", {
+test_that("add_hierarchical_unobserved_levels() accepts a data.frame mapping", {
   ard <- make_ard()
   mapping <- data.frame(
     SOC = c("Vascular", "Vascular", "Cardiac"),
     PT = c("PTX", "PTY", "PT3")
   )
-  out <- add_hierarchical_zero_rows(ard, variables = c(SOC, PT), mapping = mapping)
+  out <- add_hierarchical_unobserved_levels(ard, variables = c(SOC, PT), mapping = mapping)
 
   expect_true("Vascular" %in% lvl1(out$variable_level[out$variable == "SOC"]))
   expect_setequal(
@@ -115,9 +115,9 @@ test_that("add_hierarchical_zero_rows() accepts a data.frame mapping", {
   expect_true("PT3" %in% lvl1(out$variable_level[out$variable == "PT" & lvl1(out$group1_level) == "Cardiac"]))
 })
 
-test_that("add_hierarchical_zero_rows() preserves the by structure", {
+test_that("add_hierarchical_unobserved_levels() preserves the by structure", {
   ard <- make_ard(by = TRUE)
-  out <- add_hierarchical_zero_rows(ard, variables = c(SOC, PT), mapping = list(Vascular = "PTX"))
+  out <- add_hierarchical_unobserved_levels(ard, variables = c(SOC, PT), mapping = list(Vascular = "PTX"))
 
   # one Vascular SOC row per by-group, with the arm retained in group1
   vasc_soc <- out[out$variable == "SOC" & lvl1(out$variable_level) == "Vascular" & out$stat_name == "n", ]
@@ -130,7 +130,7 @@ test_that("add_hierarchical_zero_rows() preserves the by structure", {
   expect_setequal(lvl1(vasc_pt$group2_level), c("Vascular"))
 })
 
-test_that("add_hierarchical_zero_rows() is a no-op when nothing is missing", {
+test_that("add_hierarchical_unobserved_levels() is a no-op when nothing is missing", {
   # an ARD whose factor levels are all observed leaves the input untouched
   set.seed(1)
   adae <- data.frame(
@@ -143,24 +143,24 @@ test_that("add_hierarchical_zero_rows() is a no-op when nothing is missing", {
     variables = c(SOC, PT), id = USUBJID,
     denominator = data.frame(USUBJID = sprintf("S%03d", 1:30))
   )
-  out <- add_hierarchical_zero_rows(ard, variables = c(SOC, PT))
+  out <- add_hierarchical_unobserved_levels(ard, variables = c(SOC, PT))
   expect_equal(nrow(out), nrow(ard))
 })
 
-test_that("add_hierarchical_zero_rows() input checks", {
+test_that("add_hierarchical_unobserved_levels() input checks", {
   ard <- make_ard()
   expect_error(
-    add_hierarchical_zero_rows(data.frame(a = 1), variables = a),
+    add_hierarchical_unobserved_levels(data.frame(a = 1), variables = a),
     class = "check_class"
   )
   expect_error(
-    add_hierarchical_zero_rows(ard, variables = c(SOC, PT), mapping = "not a mapping"),
+    add_hierarchical_unobserved_levels(ard, variables = c(SOC, PT), mapping = "not a mapping"),
     "must be"
   )
 })
 
-test_that("add_hierarchical_zero_rows() output remains a valid ARD", {
+test_that("add_hierarchical_unobserved_levels() output remains a valid ARD", {
   ard <- make_ard()
-  out <- add_hierarchical_zero_rows(ard, variables = c(SOC, PT), mapping = list(Vascular = "PTX"))
+  out <- add_hierarchical_unobserved_levels(ard, variables = c(SOC, PT), mapping = list(Vascular = "PTX"))
   expect_no_error(sort_ard_hierarchical(out))
 })

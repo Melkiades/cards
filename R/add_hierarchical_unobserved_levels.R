@@ -1,98 +1,72 @@
-#' Add Zero-Count Rows for Unobserved Hierarchical Levels
+#' Add Unobserved Levels to Hierarchical ARDs
 #'
 #' @description `r lifecycle::badge('experimental')`\cr
 #'
-#' Stacked hierarchical ARDs created with [ard_stack_hierarchical()] include only
-#' the levels observed in the data, because the underlying tabulation routes
-#' through the `strata` (observed-only) branch of the engine. Predefined
-#' categories -- SMQ/CQ baskets, SOCs, preferred terms, grade scales -- therefore
-#' disappear from the ARD instead of appearing with a count of zero.
+#' A stacked hierarchical ARD keeps only the levels seen in the data, so a
+#' category that never occurs (an SOC with no events, a preferred term absent
+#' under an observed SOC, an unused grade) simply drops out instead of showing
+#' up with a count of zero.
 #'
-#' `add_hierarchical_zero_rows()` restores those rows. The expected universe of
-#' levels is read from the factor `levels()` that the ARD already carries, so the
-#' common cases need nothing beyond `variables`:
-#'
-#' - a **top-level** category that is never observed (e.g. an SOC with no events)
-#'   is recovered from the top variable's factor levels,
-#' - a **nested** child that is never observed under an otherwise present parent
-#'   (e.g. a preferred term with no events within an observed SOC) is recovered
-#'   from the child variable's factor levels.
-#'
-#' `mapping` is optional and only needed when factor levels cannot express the
-#' expected structure: children of an *unobserved* parent (there is no basis in
-#' the factor levels to know which children belong under it), or a bespoke
-#' parent/child universe that differs from the data's factor levels.
+#' `add_hierarchical_unobserved_levels()` puts those rows back. Name the
+#' hierarchical variable(s) to complete and the missing levels are added with a
+#' count of zero. The expected levels are taken from the variable's factor
+#' `levels()`, which the ARD already stores, so no reference data is needed.
 #'
 #' @param x (`card`)\cr
-#'   a stacked hierarchical ARD of class `'card'` created with
-#'   [ard_stack_hierarchical()] or [ard_stack_hierarchical_count()].
+#'   a stacked hierarchical ARD created with [ard_stack_hierarchical()].
 #' @param variables ([`tidy-select`][dplyr::dplyr_tidy_select])\cr
-#'   the hierarchical variables used to create `x`, in the same order. The first
-#'   variable is the top level; the second, when present, is the nested child.
-#'   Pass a single variable (e.g. `variables = SOC`) to complete the top level
-#'   only.
+#'   hierarchical variable(s) to complete, in hierarchy order. Use a single
+#'   variable (e.g. `variables = AESOC`) to complete the top level, or the full
+#'   set (e.g. `variables = c(AESOC, AEDECOD)`) to also fill missing children
+#'   under each observed parent.
 #' @param mapping (named `list` or `data.frame`)\cr
-#'   optional. The expected universe of levels, used only when factor levels are
-#'   insufficient (children of an unobserved parent, or a custom universe).
-#'   Either
-#'   - a **named list** mapping each parent level to a character vector of its
-#'     expected child levels, e.g.
-#'     `list("SOC A" = c("PT1", "PT2"), "SOC B" = "PT3")`, or
-#'   - a **two-column data frame** whose columns are named after the first two
-#'     `variables`, e.g. `data.frame(AESOC = ..., AEDECOD = ...)`, listing every
-#'     valid parent/child combination.
+#'   optional. Only needed to add children under a parent that is itself
+#'   unobserved -- factor levels cannot say which children belong there. Supply
+#'   either a named list, `list("SOC A" = c("PT1", "PT2"))`, or a two-column data
+#'   frame whose columns are named after the parent and child variables.
 #'
-#'   Parents present in `mapping` but absent from `x` are added as top-level
-#'   zero-rows together with their mapped children. When `mapping` is `NULL`
-#'   (default) the expected levels come from the ARD's factor levels.
-#' @param statistic (`character`)\cr
-#'   the statistics to set to zero on the added rows. Statistics not listed are
-#'   carried over from a matching observed row (so denominators such as `N`
-#'   remain correct). Defaults to `c("n", "p", "n_cum", "p_cum")`.
-#'
-#' @return an ARD data frame of class 'card'
-#' @seealso [ard_stack_hierarchical()], [sort_ard_hierarchical()]
-#' @name add_hierarchical_zero_rows
+#' @return a stacked hierarchical ARD
+#' @seealso [gtsummary::tbl_hierarchical()], [ard_stack_hierarchical()], [sort_ard_hierarchical()]
+#' @name add_hierarchical_unobserved_levels
 #'
 #' @examples
 #' set.seed(1)
 #' adae <- data.frame(
 #'   USUBJID = sprintf("S%03d", 1:20),
-#'   SOC = factor(sample(c("Cardiac", "GI"), 20, TRUE), levels = c("Cardiac", "GI", "Vascular")),
-#'   PT = factor(sample(c("PT1", "PT2"), 20, TRUE), levels = c("PT1", "PT2", "PT3"))
+#'   AESOC = factor(sample(c("Cardiac", "GI"), 20, TRUE), levels = c("Cardiac", "GI", "Vascular")),
+#'   AEDECOD = factor(sample(c("PT1", "PT2"), 20, TRUE), levels = c("PT1", "PT2", "PT3"))
 #' )
 #'
 #' ard <- ard_stack_hierarchical(
 #'   adae,
-#'   variables = c(SOC, PT),
+#'   variables = c(AESOC, AEDECOD),
 #'   id = USUBJID,
 #'   denominator = data.frame(USUBJID = sprintf("S%03d", 1:30))
 #' )
 #'
-#' # top level only: recover the unobserved SOC "Vascular" from its factor levels
+#' # complete the top level: the unobserved SOC "Vascular" is added as a zero-row
 #' ard |>
-#'   add_hierarchical_zero_rows(variables = SOC)
+#'   add_hierarchical_unobserved_levels(variables = AESOC)
 #'
-#' # nested: also fill the missing PT ("PT3") under each observed SOC,
-#' # all from the variables' factor levels -- no `mapping` needed
+#' # complete both levels: also fill the missing PT ("PT3") under each observed SOC
 #' ard |>
-#'   add_hierarchical_zero_rows(variables = c(SOC, PT))
+#'   add_hierarchical_unobserved_levels(variables = c(AESOC, AEDECOD))
 #'
-#' # `mapping` for a case factor levels cannot express: children of the
-#' # unobserved parent "Vascular"
+#' # `mapping` names the children to add under the unobserved parent "Vascular"
 #' ard |>
-#'   add_hierarchical_zero_rows(
-#'     variables = c(SOC, PT),
-#'     mapping = list(Vascular = c("PTX", "PTY"))
+#'   add_hierarchical_unobserved_levels(
+#'     variables = c(AESOC, AEDECOD),
+#'     mapping = list(Vascular = c("PT1", "PT2"))
 #'   )
 NULL
 
-#' @rdname add_hierarchical_zero_rows
+# statistics zeroed on an added level (the count-style stats; a denominator such
+# as `N` is carried over from an observed row so proportions stay well defined)
+.hierarchical_zero_stats <- c("n", "p", "n_cum", "p_cum")
+
+#' @rdname add_hierarchical_unobserved_levels
 #' @export
-add_hierarchical_zero_rows <- function(x,
-                                       variables,
-                                       mapping = NULL,
-                                       statistic = c("n", "p", "n_cum", "p_cum")) {
+add_hierarchical_unobserved_levels <- function(x, variables, mapping = NULL) {
   set_cli_abort_call()
 
   # process inputs -------------------------------------------------------------
@@ -100,12 +74,6 @@ add_hierarchical_zero_rows <- function(x,
   check_not_missing(variables)
   check_class(x, "card")
   check_class(x, "ard_stack_hierarchical")
-  if (!is.character(statistic)) {
-    cli::cli_abort(
-      "The {.arg statistic} argument must be a {.cls character} vector.",
-      call = get_cli_abort_call()
-    )
-  }
 
   # `variables` is tidy-selected against the ARD's own variable column so the
   # helper accepts the same style of input as ard_stack_hierarchical()
@@ -167,7 +135,7 @@ add_hierarchical_zero_rows <- function(x,
   parent_level_col <- if (!is.na(parent_group_col)) paste0(parent_group_col, "_level") else NA_character_
 
   # build a zero-row block from an observed template, overriding the variable and
-  # its level, optionally setting the hierarchical parent, and zeroing statistics
+  # its level, optionally setting the hierarchical parent, and zeroing counts
   build_block <- function(template, parent_level, variable, level) {
     if (nrow(template) == 0L) {
       return(template)
@@ -178,7 +146,7 @@ add_hierarchical_zero_rows <- function(x,
       template[[parent_group_col]] <- top_var
       template[[parent_level_col]] <- rep(list(parent_level), nrow(template))
     }
-    is_zero <- template[["stat_name"]] %in% statistic
+    is_zero <- template[["stat_name"]] %in% .hierarchical_zero_stats
     template[["stat"]][is_zero] <- as.list(rep(0, sum(is_zero)))
     if ("warning" %in% names(template)) template[["warning"]] <- rep(list(NULL), nrow(template))
     if ("error" %in% names(template)) template[["error"]] <- rep(list(NULL), nrow(template))

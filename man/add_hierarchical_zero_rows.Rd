@@ -7,7 +7,7 @@
 add_hierarchical_zero_rows(
   x,
   variables,
-  mapping,
+  mapping = NULL,
   statistic = c("n", "p", "n_cum", "p_cum")
 )
 }
@@ -18,10 +18,14 @@ a stacked hierarchical ARD of class \code{'card'} created with
 
 \item{variables}{(\code{\link[dplyr:dplyr_tidy_select]{tidy-select}})\cr
 the hierarchical variables used to create \code{x}, in the same order. The first
-variable is the top level; the second, when present, is the nested child.}
+variable is the top level; the second, when present, is the nested child.
+Pass a single variable (e.g. \code{variables = SOC}) to complete the top level
+only.}
 
 \item{mapping}{(named \code{list} or \code{data.frame})\cr
-the expected universe of levels. Either
+optional. The expected universe of levels, used only when factor levels are
+insufficient (children of an unobserved parent, or a custom universe).
+Either
 \itemize{
 \item a \strong{named list} mapping each parent level to a character vector of its
 expected child levels, e.g.
@@ -32,8 +36,8 @@ valid parent/child combination.
 }
 
 Parents present in \code{mapping} but absent from \code{x} are added as top-level
-zero-rows together with their mapped children. Children present in \code{mapping}
-but absent under an observed parent are added as nested zero-rows.}
+zero-rows together with their mapped children. When \code{mapping} is \code{NULL}
+(default) the expected levels come from the ARD's factor levels.}
 
 \item{statistic}{(\code{character})\cr
 the statistics to set to zero on the added rows. Statistics not listed are
@@ -52,25 +56,28 @@ through the \code{strata} (observed-only) branch of the engine. Predefined
 categories -- SMQ/CQ baskets, SOCs, preferred terms, grade scales -- therefore
 disappear from the ARD instead of appearing with a count of zero.
 
-\code{add_hierarchical_zero_rows()} restores those rows. A single \code{mapping}
-argument describes the expected universe of levels and covers both scenarios
-that arise in practice:
+\code{add_hierarchical_zero_rows()} restores those rows. The expected universe of
+levels is read from the factor \code{levels()} that the ARD already carries, so the
+common cases need nothing beyond \code{variables}:
 \itemize{
-\item a \strong{top-level} category that is never observed (e.g. an SOC with no events),
+\item a \strong{top-level} category that is never observed (e.g. an SOC with no events)
+is recovered from the top variable's factor levels,
 \item a \strong{nested} child that is never observed under an otherwise present parent
-(e.g. a preferred term with no events within an observed SOC).
+(e.g. a preferred term with no events within an observed SOC) is recovered
+from the child variable's factor levels.
 }
 
-A nested child has no unambiguous parent when it is absent, so the expected
-parent/child structure must be supplied explicitly through \code{mapping} rather
-than inferred from factor levels.
+\code{mapping} is optional and only needed when factor levels cannot express the
+expected structure: children of an \emph{unobserved} parent (there is no basis in
+the factor levels to know which children belong under it), or a bespoke
+parent/child universe that differs from the data's factor levels.
 }
 \examples{
 set.seed(1)
 adae <- data.frame(
   USUBJID = sprintf("S\%03d", 1:20),
-  SOC = factor(sample(c("Cardiac", "GI"), 20, TRUE), levels = c("Cardiac", "GI")),
-  PT = sample(c("PT1", "PT2"), 20, TRUE)
+  SOC = factor(sample(c("Cardiac", "GI"), 20, TRUE), levels = c("Cardiac", "GI", "Vascular")),
+  PT = factor(sample(c("PT1", "PT2"), 20, TRUE), levels = c("PT1", "PT2", "PT3"))
 )
 
 ard <- ard_stack_hierarchical(
@@ -80,27 +87,21 @@ ard <- ard_stack_hierarchical(
   denominator = data.frame(USUBJID = sprintf("S\%03d", 1:30))
 )
 
-# top level only: add the unobserved SOC "Vascular" as a zero-row.
-# each parent maps to `character(0)` because no child rows are needed.
+# top level only: recover the unobserved SOC "Vascular" from its factor levels
 ard |>
-  add_hierarchical_zero_rows(
-    variables = c(SOC, PT),
-    mapping = list(
-      Cardiac = character(0),
-      GI = character(0),
-      Vascular = character(0)
-    )
-  )
+  add_hierarchical_zero_rows(variables = SOC)
 
-# nested: add an unobserved SOC ("Vascular") and an unobserved PT under "Cardiac"
+# nested: also fill the missing PT ("PT3") under each observed SOC,
+# all from the variables' factor levels -- no `mapping` needed
+ard |>
+  add_hierarchical_zero_rows(variables = c(SOC, PT))
+
+# `mapping` for a case factor levels cannot express: children of the
+# unobserved parent "Vascular"
 ard |>
   add_hierarchical_zero_rows(
     variables = c(SOC, PT),
-    mapping = list(
-      Cardiac = c("PT1", "PT2", "PT3"),
-      GI = c("PT1", "PT2"),
-      Vascular = "PTX"
-    )
+    mapping = list(Vascular = c("PTX", "PTY"))
   )
 }
 \seealso{

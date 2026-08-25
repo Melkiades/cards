@@ -1,13 +1,14 @@
 skip_on_cran()
 
 # a small hierarchical ARD where "Vascular" is a declared but unobserved SOC and
-# each SOC has a known preferred-term universe
+# "PT3" is a declared but unobserved preferred term. Both are carried as factor
+# levels so the expected universe is recoverable from the ARD alone.
 make_ard <- function(by = FALSE) {
   set.seed(1)
   adae <- data.frame(
     USUBJID = sprintf("S%03d", 1:20),
-    SOC = factor(sample(c("Cardiac", "GI"), 20, TRUE), levels = c("Cardiac", "GI")),
-    PT = sample(c("PT1", "PT2"), 20, TRUE),
+    SOC = factor(sample(c("Cardiac", "GI"), 20, TRUE), levels = c("Cardiac", "GI", "Vascular")),
+    PT = factor(sample(c("PT1", "PT2"), 20, TRUE), levels = c("PT1", "PT2", "PT3")),
     TRT = factor(rep(c("A", "B"), 10))
   )
   denom <- data.frame(USUBJID = sprintf("S%03d", 1:30), TRT = factor(rep(c("A", "B"), 15)))
@@ -26,19 +27,17 @@ lvl1 <- function(col) {
   }, character(1L))
 }
 
-test_that("add_hierarchical_zero_rows() adds a missing top-level category", {
+test_that("add_hierarchical_zero_rows(variables = SOC) completes the top level from factor levels", {
   ard <- make_ard()
-  out <- add_hierarchical_zero_rows(
-    ard,
-    variables = c(SOC, PT),
-    mapping = list(Cardiac = c("PT1", "PT2"), GI = c("PT1", "PT2"), Vascular = character(0))
-  )
+  out <- add_hierarchical_zero_rows(ard, variables = SOC)
 
   expect_s3_class(out, "ard_stack_hierarchical")
   expect_setequal(
     unique(lvl1(out$variable_level[out$variable == "SOC"])),
     c("Cardiac", "GI", "Vascular")
   )
+  # top-level only: no PT rows are invented under the unobserved parent
+  expect_false(any(lvl1(out$group1_level[out$variable == "PT"]) == "Vascular"))
   # the added row has n = 0 and carries a real denominator N
   expect_equal(
     out$stat[out$variable == "SOC" & lvl1(out$variable_level) == "Vascular" & out$stat_name == "n"][[1L]],
@@ -47,6 +46,25 @@ test_that("add_hierarchical_zero_rows() adds a missing top-level category", {
   expect_equal(
     out$stat[out$variable == "SOC" & lvl1(out$variable_level) == "Vascular" & out$stat_name == "N"][[1L]],
     30
+  )
+})
+
+test_that("add_hierarchical_zero_rows(variables = c(SOC, PT)) completes nested levels from factor levels", {
+  ard <- make_ard()
+  out <- add_hierarchical_zero_rows(ard, variables = c(SOC, PT))
+
+  # top level recovered
+  expect_true("Vascular" %in% lvl1(out$variable_level[out$variable == "SOC"]))
+  # the unobserved PT3 is filled under each observed parent from PT's factor levels
+  for (parent in c("Cardiac", "GI")) {
+    expect_true(
+      "PT3" %in% lvl1(out$variable_level[out$variable == "PT" & lvl1(out$group1_level) == parent])
+    )
+  }
+  # no children invented under the unobserved parent without a mapping
+  expect_length(
+    unique(lvl1(out$variable_level[out$variable == "PT" & lvl1(out$group1_level) == "Vascular"])),
+    0L
   )
 })
 
@@ -113,24 +131,31 @@ test_that("add_hierarchical_zero_rows() preserves the by structure", {
 })
 
 test_that("add_hierarchical_zero_rows() is a no-op when nothing is missing", {
-  ard <- make_ard()
-  out <- add_hierarchical_zero_rows(
-    ard,
-    variables = c(SOC, PT),
-    mapping = list(Cardiac = c("PT1", "PT2"), GI = c("PT1", "PT2"))
+  # an ARD whose factor levels are all observed leaves the input untouched
+  set.seed(1)
+  adae <- data.frame(
+    USUBJID = sprintf("S%03d", 1:20),
+    SOC = factor(sample(c("Cardiac", "GI"), 20, TRUE), levels = c("Cardiac", "GI")),
+    PT = factor(sample(c("PT1", "PT2"), 20, TRUE), levels = c("PT1", "PT2"))
   )
+  ard <- ard_stack_hierarchical(
+    adae,
+    variables = c(SOC, PT), id = USUBJID,
+    denominator = data.frame(USUBJID = sprintf("S%03d", 1:30))
+  )
+  out <- add_hierarchical_zero_rows(ard, variables = c(SOC, PT))
   expect_equal(nrow(out), nrow(ard))
 })
 
 test_that("add_hierarchical_zero_rows() input checks", {
   ard <- make_ard()
   expect_error(
-    add_hierarchical_zero_rows(data.frame(a = 1), variables = a, mapping = list()),
+    add_hierarchical_zero_rows(data.frame(a = 1), variables = a),
     class = "check_class"
   )
   expect_error(
     add_hierarchical_zero_rows(ard, variables = c(SOC, PT), mapping = "not a mapping"),
-    "must be a named"
+    "must be"
   )
 })
 

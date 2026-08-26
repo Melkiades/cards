@@ -35,8 +35,11 @@ up with a count of zero.
 
 \code{add_hierarchical_unobserved_levels()} puts those rows back. Name the
 hierarchical variable(s) to complete and the missing levels are added with a
-count of zero. The expected levels are taken from the variable's factor
-\code{levels()}, which the ARD already stores, so no reference data is needed.
+count of zero; proportions are left as \code{NaN}, since a never-observed level has
+no one at risk (\code{0 / 0} is undefined) and should be recoded for display rather
+than asserted as zero here. The expected levels are taken from the variable's
+factor \code{levels()}, which the ARD already stores, so no reference data is
+needed.
 }
 \examples{
 set.seed(1)

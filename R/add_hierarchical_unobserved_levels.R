@@ -9,8 +9,11 @@
 #'
 #' `add_hierarchical_unobserved_levels()` puts those rows back. Name the
 #' hierarchical variable(s) to complete and the missing levels are added with a
-#' count of zero. The expected levels are taken from the variable's factor
-#' `levels()`, which the ARD already stores, so no reference data is needed.
+#' count of zero; proportions are left as `NaN`, since a never-observed level has
+#' no one at risk (`0 / 0` is undefined) and should be recoded for display rather
+#' than asserted as zero here. The expected levels are taken from the variable's
+#' factor `levels()`, which the ARD already stores, so no reference data is
+#' needed.
 #'
 #' @param x (`card`)\cr
 #'   a stacked hierarchical ARD created with [ard_stack_hierarchical()].
@@ -60,9 +63,11 @@
 #'   )
 NULL
 
-# statistics zeroed on an added level (the count-style stats; a denominator such
-# as `N` is carried over from an observed row so proportions stay well defined)
-.hierarchical_zero_stats <- c("n", "p", "n_cum", "p_cum")
+# count statistics set to zero on an added level. Proportions are left as `NaN`
+# (a never-observed level has no one at risk, so `0 / 0` is undefined) and are
+# recoded for display downstream rather than being asserted as zero here
+.hierarchical_zero_stats <- c("n", "n_cum")
+.hierarchical_nan_stats <- c("p", "p_cum")
 
 #' @rdname add_hierarchical_unobserved_levels
 #' @export
@@ -148,6 +153,8 @@ add_hierarchical_unobserved_levels <- function(x, variables, mapping = NULL) {
     }
     is_zero <- template[["stat_name"]] %in% .hierarchical_zero_stats
     template[["stat"]][is_zero] <- as.list(rep(0, sum(is_zero)))
+    is_nan <- template[["stat_name"]] %in% .hierarchical_nan_stats
+    template[["stat"]][is_nan] <- as.list(rep(NaN, sum(is_nan)))
     if ("warning" %in% names(template)) template[["warning"]] <- rep(list(NULL), nrow(template))
     if ("error" %in% names(template)) template[["error"]] <- rep(list(NULL), nrow(template))
     template

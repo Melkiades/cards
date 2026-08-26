@@ -47,6 +47,10 @@ test_that("add_hierarchical_unobserved_levels(variables = SOC) completes the top
     out$stat[out$variable == "SOC" & lvl1(out$variable_level) == "Vascular" & out$stat_name == "N"][[1L]],
     30
   )
+  # proportion is left as NaN (0 / 0 is undefined), not asserted as zero
+  expect_true(
+    is.nan(out$stat[out$variable == "SOC" & lvl1(out$variable_level) == "Vascular" & out$stat_name == "p"][[1L]])
+  )
 })
 
 test_that("add_hierarchical_unobserved_levels(variables = c(SOC, PT)) completes nested levels from factor levels", {

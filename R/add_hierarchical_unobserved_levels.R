@@ -2,203 +2,198 @@
 #'
 #' @description `r lifecycle::badge('experimental')`\cr
 #'
-#' A stacked hierarchical ARD keeps only the levels seen in the data, so a
-#' category that never occurs (an SOC with no events, a preferred term absent
-#' under an observed SOC, an unused grade) simply drops out instead of showing
-#' up with a count of zero.
+#' A stacked hierarchical ARD only has rows for the levels observed in the data:
+#' an SOC with no events, or an AE never reported under an SOC, has no rows.
 #'
-#' `add_hierarchical_unobserved_levels()` puts those rows back. Supply a data
-#' frame of the level combinations you expect to see, and any that are missing
-#' are added with a count of zero; proportions are left as `NaN`, since a
-#' never-observed level has no one at risk (`0 / 0` is undefined) and should be
-#' recoded for display rather than asserted as zero here.
+#' `add_hierarchical_unobserved_levels()` adds these rows. Pass the level
+#' combinations you expect in `levels`: each combination missing from `x` is
+#' added with `n = 0`, the denominator `N` of its `by` group, and `p = 0`. As in
+#' the rest of the ARD, `p` is `NaN` only when the `by` group is empty (`N = 0`).
 #'
 #' @param x (`card`)\cr
-#'   a stacked hierarchical ARD created with [ard_stack_hierarchical()].
+#'   a stacked hierarchical ARD of class `'card'` created using [ard_stack_hierarchical()] or
+#'   [ard_stack_hierarchical_count()].
 #' @param levels (`data.frame`)\cr
-#'   the expected level combinations. Its columns are named after the
-#'   hierarchical variables to complete, in hierarchy order (e.g. columns
-#'   `AESOC` and `AEDECOD`), matching the `variables`/`include` of the original
-#'   [ard_stack_hierarchical()] call. Each row is a combination that should be
-#'   present: any combination not already in `x` is added as a zero-count row.
-#'   Use a single column (e.g. just `AESOC`) to complete only the top level.
+#'   the expected level combinations, one per row. The columns are named after the
+#'   hierarchy variables of `x` and start from the top of the hierarchy, e.g. `AESOC`
+#'   alone, or `AESOC` and `AEDECOD`. Their order does not matter.
 #'
-#' @return a stacked hierarchical ARD
-#' @seealso [gtsummary::tbl_hierarchical()], [ard_stack_hierarchical()], [sort_ard_hierarchical()]
+#' @details
+#' Rows are only added for the variables with summary rows in `x` (see the
+#' `include` argument of [ard_stack_hierarchical()]).
+#'
+#' The result is sorted alphanumerically, as returned by [ard_stack_hierarchical()],
+#' so that each added level sits under its parent. Use [sort_ard_hierarchical()]
+#' afterwards for a different order.
+#'
+#' @return an ARD data frame of class 'card'
+#' @seealso [sort_ard_hierarchical()]
 #' @name add_hierarchical_unobserved_levels
 #'
-#' @examples
-#' set.seed(1)
-#' adae <- data.frame(
-#'   USUBJID = sprintf("S%03d", 1:20),
-#'   AESOC = sample(c("Cardiac", "GI"), 20, TRUE),
-#'   AEDECOD = sample(c("PT1", "PT2"), 20, TRUE)
-#' )
+#' @examplesIf (identical(Sys.getenv("NOT_CRAN"), "true") || identical(Sys.getenv("IN_PKGDOWN"), "true"))
+#' # AEs of two SOCs: no severe AE is reported for EYE DISORDERS,
+#' # and only some of the CARDIAC DISORDERS AEs are severe
+#' adae <- ADAE |>
+#'   dplyr::filter(AESOC %in% c("CARDIAC DISORDERS", "EYE DISORDERS"))
 #'
-#' ard <- ard_stack_hierarchical(
-#'   adae,
-#'   variables = c(AESOC, AEDECOD),
-#'   id = USUBJID,
-#'   denominator = data.frame(USUBJID = sprintf("S%03d", 1:30))
-#' )
-#'
-#' # complete the top level: the unobserved SOC "Vascular" is added as a zero-row
-#' ard |>
-#'   add_hierarchical_unobserved_levels(
-#'     levels = data.frame(AESOC = c("Cardiac", "GI", "Vascular"))
+#' ard <- adae |>
+#'   dplyr::filter(AESEV == "SEVERE") |>
+#'   ard_stack_hierarchical(
+#'     variables = c(AESOC, AEDECOD),
+#'     by = TRTA,
+#'     denominator = ADSL,
+#'     id = USUBJID
 #'   )
 #'
-#' # complete both levels, including children of the unobserved parent "Vascular"
-#' ard |>
-#'   add_hierarchical_unobserved_levels(
-#'     levels = data.frame(
-#'       AESOC = c("Cardiac", "Cardiac", "GI", "GI", "Vascular", "Vascular"),
-#'       AEDECOD = c("PT1", "PT2", "PT1", "PT2", "PTX", "PTY")
-#'     )
-#'   )
+#' # add the SOC with no severe AEs
+#' add_hierarchical_unobserved_levels(ard, levels = dplyr::distinct(adae, AESOC))
+#'
+#' # add every SOC/AE combination of the two SOCs
+#' add_hierarchical_unobserved_levels(ard, levels = dplyr::distinct(adae, AESOC, AEDECOD))
 NULL
-
-# count statistics set to zero on an added level. Proportions are left as `NaN`
-# (a never-observed level has no one at risk, so `0 / 0` is undefined) and are
-# recoded for display downstream rather than being asserted as zero here
-.hierarchical_zero_stats <- c("n", "n_cum")
-.hierarchical_nan_stats <- c("p", "p_cum")
 
 #' @rdname add_hierarchical_unobserved_levels
 #' @export
 add_hierarchical_unobserved_levels <- function(x, levels) {
   set_cli_abort_call()
 
-  # process inputs -------------------------------------------------------------
+  # check inputs ---------------------------------------------------------------
   check_not_missing(x)
   check_not_missing(levels)
-  check_class(x, "card")
-  check_class(x, "ard_stack_hierarchical")
+  check_class(x, c("ard_stack_hierarchical", "ard_stack_hierarchical_count"))
   check_data_frame(levels)
 
-  # the columns of `levels` name the hierarchical variables to complete, in
-  # hierarchy order, and must exist in the ARD's own variable column
-  vars <- names(levels)
-  var_universe <- unique(x[["variable"]])
-  unknown <- setdiff(vars, var_universe)
-  if (length(unknown) > 0L) {
+  ard_args <- attributes(x)$args
+  variables <- ard_args$variables
+
+  # the columns of `levels` are the top hierarchy variables, in any order
+  top_variables <- variables[seq_len(ncol(levels))]
+  if (ncol(levels) == 0L || !setequal(names(levels), top_variables)) {
     cli::cli_abort(
       c(
-        "Columns of {.arg levels} must name hierarchical variables present in {.arg x}.",
-        "i" = "Unknown column{?s}: {.val {unknown}}.",
-        "i" = "Available variable{?s}: {.val {var_universe}}."
+        "The columns of {.arg levels} must be hierarchy variables of {.arg x}, starting from the top.",
+        i = "The hierarchy variables of {.arg x}, from the top, are {.val {variables}}."
+      ),
+      call = get_cli_abort_call()
+    )
+  }
+  if (anyNA(levels)) {
+    cli::cli_abort(
+      "The {.arg levels} argument cannot contain missing values.",
+      call = get_cli_abort_call()
+    )
+  }
+  levels <- dplyr::distinct(levels[top_variables])
+
+  # only the variables with summary rows in `x` get new rows, and only `n`, `N`
+  # and `p` have a known value for an unobserved level
+  complete_variables <- intersect(top_variables, ard_args$include)
+  is_summary_row <- x$context %in% c("hierarchical", "hierarchical_count") & x$variable %in% complete_variables
+  unexpected_stats <- setdiff(x$stat_name[is_summary_row], c("n", "N", "p"))
+  if (!is_empty(unexpected_stats)) {
+    cli::cli_abort(
+      c(
+        "Cannot add unobserved levels to an ARD with the {.val {unexpected_stats}} statistic{?s}.",
+        i = "Only the {.val {c('n', 'N', 'p')}} statistics can be set for an unobserved level."
       ),
       call = get_cli_abort_call()
     )
   }
 
-  # a level column that is a factor could reintroduce the very NA-from-bad-level
-  # problem we are fixing, so compare as character throughout
-  levels[] <- lapply(levels, as.character)
-
-  top_var <- vars[1L]
-  child_var <- if (length(vars) >= 2L) vars[2L] else NA_character_
-
-  # helper: first level value from a list-column (`variable_level`, `groupN_level`)
-  level_chr <- function(col) {
-    vapply(
-      col,
-      function(z) {
-        z <- as.character(z)
-        if (length(z)) z[[1L]] else NA_character_
-      },
-      character(1L)
-    )
-  }
-
-  # the hierarchical parent of a nested variable is stored in the last populated
-  # `groupN` column: without a `by` the top variable has no group columns and the
-  # child's parent is `group1`; with a `by` the arm occupies `group1` and the
-  # parent shifts to `group2`. Detect the child's parent group column from data.
-  child_rows <- if (!is.na(child_var)) x[x[["variable"]] == child_var, ] else x[0, ]
-  parent_group_col <- NA_character_
-  if (nrow(child_rows) > 0L) {
-    group_cols <- grep("^group[0-9]+$", names(x), value = TRUE)
-    for (gc in group_cols) {
-      if (any(as.character(child_rows[[gc]]) == top_var, na.rm = TRUE)) {
-        parent_group_col <- gc
-        break
+  # build the rows of the unobserved levels ------------------------------------
+  new_rows <-
+    lapply(
+      complete_variables,
+      \(variable) {
+        .unobserved_level_rows(
+          x = x[is_summary_row & x$variable == variable, ],
+          levels = levels,
+          variable = variable,
+          ancestors = variables[seq_len(match(variable, variables) - 1L)]
+        )
       }
-    }
-  }
-  parent_level_col <- if (!is.na(parent_group_col)) paste0(parent_group_col, "_level") else NA_character_
+    ) |>
+    dplyr::bind_rows()
 
-  # build a zero-row block from an observed template, overriding the variable and
-  # its level, optionally setting the hierarchical parent, and zeroing counts
-  build_block <- function(template, parent_level, variable, level) {
-    if (nrow(template) == 0L) {
-      return(template)
-    }
-    template[["variable"]] <- variable
-    template[["variable_level"]] <- rep(list(level), nrow(template))
-    if (!is.null(parent_level) && !is.na(parent_group_col)) {
-      template[[parent_group_col]] <- top_var
-      template[[parent_level_col]] <- rep(list(parent_level), nrow(template))
-    }
-    is_zero <- template[["stat_name"]] %in% .hierarchical_zero_stats
-    template[["stat"]][is_zero] <- as.list(rep(0, sum(is_zero)))
-    is_nan <- template[["stat_name"]] %in% .hierarchical_nan_stats
-    template[["stat"]][is_nan] <- as.list(rep(NaN, sum(is_nan)))
-    if ("warning" %in% names(template)) template[["warning"]] <- rep(list(NULL), nrow(template))
-    if ("error" %in% names(template)) template[["error"]] <- rep(list(NULL), nrow(template))
-    template
-  }
-
-  # blueprint rows carry the correct stat structure (n/N/p, by-groups, fmt_fun).
-  # one blueprint per `by`-group is preserved by taking all rows of one level.
-  observed_top <- unique(level_chr(x[["variable_level"]][x[["variable"]] == top_var]))
-  blueprint_top <- x[x[["variable"]] == top_var & level_chr(x[["variable_level"]]) == observed_top[1L], ]
-  # a child blueprint spans one child level under one parent, across all
-  # `by`-groups; the parent level is overwritten per added row
-  blueprint_child <- if (nrow(child_rows) > 0L) {
-    first_child <- level_chr(child_rows[["variable_level"]])[1L]
-    child_one <- child_rows[level_chr(child_rows[["variable_level"]]) == first_child, ]
-    if (!is.na(parent_level_col)) {
-      first_parent <- level_chr(child_one[[parent_level_col]])[1L]
-      child_one[level_chr(child_one[[parent_level_col]]) == first_parent, ]
-    } else {
-      child_one
-    }
-  } else {
-    x[0, ]
-  }
-
-  new_blocks <- list()
-
-  # top-level completion: add every expected top value not already observed
-  expected_top <- unique(levels[[top_var]])
-  expected_top <- expected_top[!is.na(expected_top)]
-  for (lvl in setdiff(expected_top, observed_top)) {
-    new_blocks <- c(new_blocks, list(build_block(blueprint_top, NULL, top_var, lvl)))
-  }
-
-  # child completion: for every expected parent, add the children listed in
-  # `levels` that are not already observed under it. A newly added (unobserved)
-  # parent has no observed children, so its full child set is added -- the same
-  # code path as an observed parent, giving consistent behaviour for all levels.
-  if (!is.na(child_var) && !is.na(parent_level_col)) {
-    for (parent in expected_top) {
-      expected_kids <- unique(levels[[child_var]][levels[[top_var]] == parent])
-      expected_kids <- expected_kids[!is.na(expected_kids)]
-      observed_kids <- unique(level_chr(
-        child_rows[["variable_level"]][level_chr(child_rows[[parent_level_col]]) == parent]
-      ))
-      for (kid in setdiff(expected_kids, observed_kids)) {
-        new_blocks <- c(new_blocks, list(build_block(blueprint_child, parent, child_var, kid)))
-      }
-    }
-  }
-
-  if (length(new_blocks) == 0L) {
+  if (nrow(new_rows) == 0L) {
     return(x)
   }
 
-  out <- dplyr::bind_rows(x, dplyr::bind_rows(new_blocks))
-  class(out) <- class(x)
-  out
+  # sort as `ard_stack_hierarchical()` does, so each added level sits under its parent
+  dplyr::bind_rows(x, new_rows) |>
+    sort_ard_hierarchical(sort = "alphanumeric")
+}
+
+# rows for the combinations of `levels` missing from `x`, the summary rows of
+# `variable`. Each layout of `x` (one per set of group columns: with the `by`
+# variables, or overall without them) is completed from a template, the rows of
+# one observed level, which hold every `by` group with its denominator `N`
+.unobserved_level_rows <- function(x, levels, variable, ancestors) {
+  if (nrow(x) == 0L) {
+    cli::cli_abort(
+      "Cannot add levels for {.val {variable}}: {.arg x} has no rows for this variable to copy.",
+      call = get_cli_abort_call()
+    )
+  }
+  expected <- dplyr::distinct(levels[c(ancestors, variable)])
+  expected_chr <- dplyr::mutate(expected, across(everything(), as.character))
+  group_cols <- grep("^group[0-9]+$", names(x), value = TRUE)
+
+  lapply(
+    vctrs::vec_group_loc(x[group_cols])$loc,
+    \(loc) {
+      x_layout <- x[loc, ]
+      # the level columns of the ancestors and of `variable` in this layout
+      level_cols <- c(
+        sprintf("%s_level", group_cols[match(ancestors, unlist(x_layout[1L, group_cols]))]),
+        "variable_level"
+      )
+      observed <- x_layout[level_cols] |>
+        unlist_ard_columns(columns = everything()) |>
+        dplyr::mutate(across(everything(), as.character)) |>
+        stats::setNames(names(expected))
+      missing <- vctrs::vec_slice(expected, !vctrs::vec_in(expected_chr, observed))
+      if (nrow(missing) == 0L) {
+        return(NULL)
+      }
+
+      # copy the template once per missing combination, then set its levels
+      template <- x_layout[vctrs::vec_equal(observed, vctrs::vec_slice(observed, 1L)), ]
+      i_missing <- rep(seq_len(nrow(missing)), each = nrow(template))
+      new <- template[rep(seq_len(nrow(template)), times = nrow(missing)), ]
+      for (i in seq_along(level_cols)) {
+        new[[level_cols[i]]] <- .as_levels_like(
+          missing[[i]][i_missing],
+          like = template[[level_cols[i]]][[1L]],
+          arg = paste0("levels$", names(missing)[i])
+        )
+      }
+
+      # `n` is 0 and so is `p = n / N`, except in an empty `by` group (`N = 0`):
+      # there `p` is NaN, which is exactly where the template's own `p` is NaN
+      new$stat[new$stat_name == "n"] <- list(0L)
+      is_p <- new$stat_name == "p"
+      new$stat[is_p] <- lapply(new$stat[is_p], \(p) if (is.nan(p)) NaN else 0)
+      for (col in intersect(c("warning", "error"), names(new))) {
+        new[[col]] <- rep(list(NULL), nrow(new))
+      }
+      if ("stat_fmt" %in% names(new)) {
+        new <- apply_fmt_fun(new, replace = TRUE)
+      }
+      new
+    }
+  ) |>
+    dplyr::bind_rows()
+}
+
+# new level values in the type of the levels already in the ARD (`like`), as a
+# list column. A factor keeps its levels, extended by any new value
+.as_levels_like <- function(values, like, arg) {
+  values <-
+    if (is.factor(like)) {
+      factor(as.character(values), levels = union(levels(like), as.character(values)))
+    } else {
+      vctrs::vec_cast(values, like, x_arg = arg, call = get_cli_abort_call())
+    }
+  as.list(values)
 }

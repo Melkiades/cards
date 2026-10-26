@@ -8,63 +8,59 @@ add_hierarchical_unobserved_levels(x, levels)
 }
 \arguments{
 \item{x}{(\code{card})\cr
-a stacked hierarchical ARD created with \code{\link[=ard_stack_hierarchical]{ard_stack_hierarchical()}}.}
+a stacked hierarchical ARD of class \code{'card'} created using \code{\link[=ard_stack_hierarchical]{ard_stack_hierarchical()}} or
+\code{\link[=ard_stack_hierarchical_count]{ard_stack_hierarchical_count()}}.}
 
 \item{levels}{(\code{data.frame})\cr
-the expected level combinations. Its columns are named after the
-hierarchical variables to complete, in hierarchy order (e.g. columns
-\code{AESOC} and \code{AEDECOD}), matching the \code{variables}/\code{include} of the original
-\code{\link[=ard_stack_hierarchical]{ard_stack_hierarchical()}} call. Each row is a combination that should be
-present: any combination not already in \code{x} is added as a zero-count row.
-Use a single column (e.g. just \code{AESOC}) to complete only the top level.}
+the expected level combinations, one per row. The columns are named after the
+hierarchy variables of \code{x} and start from the top of the hierarchy, e.g. \code{AESOC}
+alone, or \code{AESOC} and \code{AEDECOD}. Their order does not matter.}
 }
 \value{
-a stacked hierarchical ARD
+an ARD data frame of class 'card'
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}\cr
 
-A stacked hierarchical ARD keeps only the levels seen in the data, so a
-category that never occurs (an SOC with no events, a preferred term absent
-under an observed SOC, an unused grade) simply drops out instead of showing
-up with a count of zero.
+A stacked hierarchical ARD only has rows for the levels observed in the data:
+an SOC with no events, or an AE never reported under an SOC, has no rows.
 
-\code{add_hierarchical_unobserved_levels()} puts those rows back. Supply a data
-frame of the level combinations you expect to see, and any that are missing
-are added with a count of zero; proportions are left as \code{NaN}, since a
-never-observed level has no one at risk (\code{0 / 0} is undefined) and should be
-recoded for display rather than asserted as zero here.
+\code{add_hierarchical_unobserved_levels()} adds these rows. Pass the level
+combinations you expect in \code{levels}: each combination missing from \code{x} is
+added with \code{n = 0}, the denominator \code{N} of its \code{by} group, and \code{p = 0}. As in
+the rest of the ARD, \code{p} is \code{NaN} only when the \code{by} group is empty (\code{N = 0}).
+}
+\details{
+Rows are only added for the variables with summary rows in \code{x} (see the
+\code{include} argument of \code{\link[=ard_stack_hierarchical]{ard_stack_hierarchical()}}).
+
+The result is sorted alphanumerically, as returned by \code{\link[=ard_stack_hierarchical]{ard_stack_hierarchical()}},
+so that each added level sits under its parent. Use \code{\link[=sort_ard_hierarchical]{sort_ard_hierarchical()}}
+afterwards for a different order.
 }
 \examples{
-set.seed(1)
-adae <- data.frame(
-  USUBJID = sprintf("S\%03d", 1:20),
-  AESOC = sample(c("Cardiac", "GI"), 20, TRUE),
-  AEDECOD = sample(c("PT1", "PT2"), 20, TRUE)
-)
+\dontshow{if ((identical(Sys.getenv("NOT_CRAN"), "true") || identical(Sys.getenv("IN_PKGDOWN"), "true"))) withAutoprint(\{ # examplesIf}
+# AEs of two SOCs: no severe AE is reported for EYE DISORDERS,
+# and only some of the CARDIAC DISORDERS AEs are severe
+adae <- ADAE |>
+  dplyr::filter(AESOC \%in\% c("CARDIAC DISORDERS", "EYE DISORDERS"))
 
-ard <- ard_stack_hierarchical(
-  adae,
-  variables = c(AESOC, AEDECOD),
-  id = USUBJID,
-  denominator = data.frame(USUBJID = sprintf("S\%03d", 1:30))
-)
-
-# complete the top level: the unobserved SOC "Vascular" is added as a zero-row
-ard |>
-  add_hierarchical_unobserved_levels(
-    levels = data.frame(AESOC = c("Cardiac", "GI", "Vascular"))
+ard <- adae |>
+  dplyr::filter(AESEV == "SEVERE") |>
+  ard_stack_hierarchical(
+    variables = c(AESOC, AEDECOD),
+    by = TRTA,
+    denominator = ADSL,
+    id = USUBJID
   )
 
-# complete both levels, including children of the unobserved parent "Vascular"
-ard |>
-  add_hierarchical_unobserved_levels(
-    levels = data.frame(
-      AESOC = c("Cardiac", "Cardiac", "GI", "GI", "Vascular", "Vascular"),
-      AEDECOD = c("PT1", "PT2", "PT1", "PT2", "PTX", "PTY")
-    )
-  )
+# add the SOC with no severe AEs
+add_hierarchical_unobserved_levels(ard, levels = dplyr::distinct(adae, AESOC))
+
+# add every SOC/AE combination of the two SOCs
+add_hierarchical_unobserved_levels(ard, levels = dplyr::distinct(adae, AESOC, AEDECOD))
+\dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[gtsummary:tbl_hierarchical]{gtsummary::tbl_hierarchical()}}, \code{\link[=ard_stack_hierarchical]{ard_stack_hierarchical()}}, \code{\link[=sort_ard_hierarchical]{sort_ard_hierarchical()}}
+\code{\link[=sort_ard_hierarchical]{sort_ard_hierarchical()}}
 }

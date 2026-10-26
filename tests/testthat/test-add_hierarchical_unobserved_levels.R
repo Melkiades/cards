@@ -1,180 +1,260 @@
 skip_on_cran()
 
-# a small hierarchical ARD where "Vascular" and "PT3" never occur in the data.
-# The expected universe is supplied by the caller via the `levels` data frame,
-# so the source columns need not be factors.
-make_ard <- function(by = FALSE) {
-  set.seed(1)
-  adae <- data.frame(
-    USUBJID = sprintf("S%03d", 1:20),
-    SOC = sample(c("Cardiac", "GI"), 20, TRUE),
-    PT = sample(c("PT1", "PT2"), 20, TRUE),
-    TRT = rep(c("A", "B"), 10)
-  )
-  denom <- data.frame(USUBJID = sprintf("S%03d", 1:30), TRT = rep(c("A", "B"), 15))
-  if (by) {
-    ard_stack_hierarchical(adae, variables = c(SOC, PT), by = TRT, id = USUBJID, denominator = denom)
-  } else {
-    ard_stack_hierarchical(adae, variables = c(SOC, PT), id = USUBJID, denominator = denom)
-  }
+ADAE_subset <- cards::ADAE |>
+  dplyr::filter(AESOC %in% c("CARDIAC DISORDERS", "EYE DISORDERS"))
+
+# two CARDIAC DISORDERS AEs, each reported in all three arms: EYE DISORDERS and
+# the other CARDIAC DISORDERS AEs are unobserved
+ADAE_observed <- ADAE_subset |>
+  dplyr::filter(AEDECOD %in% c("MYOCARDIAL INFARCTION", "SINUS BRADYCARDIA"))
+
+ard <- ard_stack_hierarchical(
+  data = ADAE_observed,
+  variables = c(AESOC, AEDECOD),
+  by = TRTA,
+  denominator = cards::ADSL,
+  id = USUBJID
+)
+
+# the 27 SOC/AE combinations of the two SOCs
+levels_all <- dplyr::distinct(ADAE_subset, AESOC, AEDECOD)
+
+# "SOC / AE" of each AE row with the `n` statistic, so once per arm
+ae_rows <- function(x) {
+  x <- x |>
+    dplyr::filter(variable == "AEDECOD", stat_name == "n") |>
+    unlist_ard_columns()
+  sort(paste(x$group2_level, x$variable_level, sep = " / "))
 }
+expected_ae_rows <- sort(rep(paste(levels_all$AESOC, levels_all$AEDECOD, sep = " / "), times = 3L))
 
-# first level value from a list-column
-lvl1 <- function(col) {
-  vapply(col, function(z) {
-    z <- as.character(z)
-    if (length(z)) z[[1L]] else NA_character_
-  }, character(1L))
-}
+test_that("add_hierarchical_unobserved_levels() works", {
+  expect_silent(ard_full <- add_hierarchical_unobserved_levels(ard, levels = levels_all))
 
-test_that("add_hierarchical_unobserved_levels() completes the top level from a one-column data frame", {
-  ard <- make_ard()
-  out <- add_hierarchical_unobserved_levels(
-    ard,
-    levels = data.frame(SOC = c("Cardiac", "GI", "Vascular"))
-  )
+  # each SOC/AE combination has a row per arm, under its SOC
+  expect_equal(ae_rows(ard_full), expected_ae_rows)
 
-  expect_s3_class(out, "ard_stack_hierarchical")
-  expect_setequal(
-    unique(lvl1(out$variable_level[out$variable == "SOC"])),
-    c("Cardiac", "GI", "Vascular")
-  )
-  # top-level only: no PT rows are invented under the unobserved parent
-  expect_false(any(lvl1(out$group1_level[out$variable == "PT"]) == "Vascular"))
-  # the added row has n = 0 and carries a real denominator N
+  # an added level has n = 0, the N of its arm, and p = 0
+  ard_eye <- dplyr::filter(ard_full, variable == "AESOC", variable_level %in% list("EYE DISORDERS"))
+  ard_cardiac <- dplyr::filter(ard_full, variable == "AESOC", variable_level %in% list("CARDIAC DISORDERS"))
+  expect_identical(unique(ard_eye$stat[ard_eye$stat_name == "n"]), list(0L))
+  expect_identical(unique(ard_eye$stat[ard_eye$stat_name == "p"]), list(0))
+  expect_identical(ard_eye$group1_level, ard_cardiac$group1_level)
+  expect_identical(ard_eye$stat[ard_eye$stat_name == "N"], ard_cardiac$stat[ard_cardiac$stat_name == "N"])
+
+  # the rows of `x` are unchanged: removing the zero-count levels gives back `x`
+  expect_equal(filter_ard_hierarchical(ard_full, sum(n) > 0), ard)
+
+  # the result is sorted like the output of `ard_stack_hierarchical()`
+  expect_equal(sort_ard_hierarchical(ard_full, sort = "alphanumeric"), ard_full)
+
+  # the column order of `levels` does not matter
   expect_equal(
-    out$stat[out$variable == "SOC" & lvl1(out$variable_level) == "Vascular" & out$stat_name == "n"][[1L]],
-    0
+    add_hierarchical_unobserved_levels(ard, levels = levels_all[c("AEDECOD", "AESOC")]),
+    ard_full
   )
+})
+
+test_that("add_hierarchical_unobserved_levels() adds the top level only", {
+  ard_soc <- add_hierarchical_unobserved_levels(ard, levels = dplyr::distinct(ADAE_subset, AESOC))
+
+  # EYE DISORDERS is added, a row per arm and statistic, with no AE rows under it
+  expect_equal(nrow(ard_soc), nrow(ard) + 9L)
+  expect_true(any(ard_soc$variable_level %in% list("EYE DISORDERS")))
+  expect_equal(ae_rows(ard_soc), ae_rows(ard))
+})
+
+test_that("add_hierarchical_unobserved_levels() returns `x` unchanged when no level is missing", {
+  expect_identical(
+    add_hierarchical_unobserved_levels(ard, levels = dplyr::distinct(ADAE_observed, AESOC, AEDECOD)),
+    ard
+  )
+})
+
+test_that("add_hierarchical_unobserved_levels() works with `overall`, `over_variables`, `attributes` and `total_n`", {
+  ard_opts <- ard_stack_hierarchical(
+    data = ADAE_observed,
+    variables = c(AESOC, AEDECOD),
+    by = TRTA,
+    denominator = cards::ADSL,
+    id = USUBJID,
+    overall = TRUE,
+    over_variables = TRUE,
+    attributes = TRUE,
+    total_n = TRUE
+  )
+  ard_full <- add_hierarchical_unobserved_levels(ard_opts, levels = levels_all)
+
+  # an added AE has a row per arm and an overall row, all under its SOC
   expect_equal(
-    out$stat[out$variable == "SOC" & lvl1(out$variable_level) == "Vascular" & out$stat_name == "N"][[1L]],
-    30
+    ard_full |>
+      dplyr::filter(variable == "AEDECOD", variable_level %in% list("GLAUCOMA"), stat_name == "n") |>
+      dplyr::select(all_ard_groups()) |>
+      unlist_ard_columns() |>
+      as.data.frame(),
+    data.frame(
+      group1 = c("TRTA", "TRTA", "TRTA", "AESOC"),
+      group1_level = c("Placebo", "Xanomeline High Dose", "Xanomeline Low Dose", "EYE DISORDERS"),
+      group2 = c("AESOC", "AESOC", "AESOC", NA),
+      group2_level = c("EYE DISORDERS", "EYE DISORDERS", "EYE DISORDERS", NA)
+    ),
+    ignore_attr = "args"
   )
-  # proportion is left as NaN (0 / 0 is undefined), not asserted as zero
-  expect_true(
-    is.nan(out$stat[out$variable == "SOC" & lvl1(out$variable_level) == "Vascular" & out$stat_name == "p"][[1L]])
-  )
+
+  # the rows that do not depend on the levels are unchanged
+  other_rows <- \(x) dplyr::filter(x, context %in% c("attributes", "total_n") | variable == "..ard_hierarchical_overall..")
+  expect_equal(other_rows(ard_full), other_rows(ard_opts))
 })
 
-test_that("add_hierarchical_unobserved_levels() completes nested levels under observed parents", {
-  ard <- make_ard()
-  out <- add_hierarchical_unobserved_levels(
-    ard,
-    levels = data.frame(
-      SOC = c("Cardiac", "Cardiac", "Cardiac", "GI", "GI", "GI"),
-      PT = c("PT1", "PT2", "PT3", "PT1", "PT2", "PT3")
+test_that("add_hierarchical_unobserved_levels() works with `include`", {
+  ard_ae <- ard_stack_hierarchical(
+    data = ADAE_observed,
+    variables = c(AESOC, AEDECOD),
+    by = TRTA,
+    denominator = cards::ADSL,
+    id = USUBJID,
+    include = AEDECOD
+  )
+  ard_full <- add_hierarchical_unobserved_levels(ard_ae, levels = levels_all)
+
+  # AE rows are added under their SOC, and no SOC summary rows are created
+  expect_equal(ae_rows(ard_full), expected_ae_rows)
+  expect_false("AESOC" %in% ard_full$variable)
+})
+
+test_that("add_hierarchical_unobserved_levels() works with ard_stack_hierarchical_count()", {
+  ard_count <- ard_stack_hierarchical_count(
+    data = ADAE_observed,
+    variables = c(AESOC, AEDECOD),
+    by = TRTA,
+    denominator = cards::ADSL
+  )
+  ard_full <- add_hierarchical_unobserved_levels(ard_count, levels = levels_all)
+
+  expect_equal(ae_rows(ard_full), expected_ae_rows)
+
+  # an added level only has the `n` statistic, set to 0
+  ard_eye <- dplyr::filter(ard_full, variable == "AESOC", variable_level %in% list("EYE DISORDERS"))
+  expect_identical(unique(ard_eye$stat_name), "n")
+  expect_identical(unique(ard_eye$stat), list(0L))
+})
+
+test_that("add_hierarchical_unobserved_levels() works with three hierarchy variables", {
+  ard_sev <- ard_stack_hierarchical(
+    data = ADAE_subset,
+    variables = c(AESOC, AEDECOD, AESEV),
+    by = TRTA,
+    denominator = cards::ADSL,
+    id = USUBJID
+  )
+  # no severe GLAUCOMA is reported
+  ard_full <- add_hierarchical_unobserved_levels(
+    ard_sev,
+    levels = data.frame(AESOC = "EYE DISORDERS", AEDECOD = "GLAUCOMA", AESEV = "SEVERE")
+  )
+
+  # only the severity is added, a row per arm and statistic, under its SOC and AE
+  expect_equal(nrow(ard_full), nrow(ard_sev) + 9L)
+  ard_severe <- dplyr::filter(
+    ard_full,
+    variable == "AESEV", variable_level %in% list("SEVERE"), group3_level %in% list("GLAUCOMA")
+  )
+  expect_equal(unique(unlist(ard_severe$group2_level)), "EYE DISORDERS")
+  expect_identical(unique(ard_severe$stat[ard_severe$stat_name == "n"]), list(0L))
+})
+
+test_that("add_hierarchical_unobserved_levels() keeps factor levels as factors", {
+  # the factor levels are the observed ones only, so the added levels are new
+  ard_fct <- ADAE_observed |>
+    dplyr::mutate(AESOC = factor(AESOC), AEDECOD = factor(AEDECOD)) |>
+    ard_stack_hierarchical(
+      variables = c(AESOC, AEDECOD),
+      by = TRTA,
+      denominator = cards::ADSL,
+      id = USUBJID
     )
-  )
+  ard_full <- add_hierarchical_unobserved_levels(ard_fct, levels = levels_all)
 
-  # the unobserved PT3 is filled under each observed parent
-  for (parent in c("Cardiac", "GI")) {
-    expect_true(
-      "PT3" %in% lvl1(out$variable_level[out$variable == "PT" & lvl1(out$group1_level) == parent])
-    )
-  }
+  # added levels are factors too, so the level columns still unlist to factors
+  expect_s3_class(unlist(ard_full$variable_level[ard_full$variable == "AESOC"]), "factor")
+  expect_s3_class(unlist(ard_full$group2_level[ard_full$variable == "AEDECOD"]), "factor")
+  expect_equal(ae_rows(ard_full), expected_ae_rows)
 })
 
-test_that("add_hierarchical_unobserved_levels() adds children of a missing parent", {
-  ard <- make_ard()
-  out <- add_hierarchical_unobserved_levels(
-    ard,
-    levels = data.frame(SOC = c("Vascular", "Vascular"), PT = c("PTX", "PTY"))
+test_that("add_hierarchical_unobserved_levels() keeps `p` as NaN in an empty `by` group", {
+  # "Arm Z" has no subjects, so N = 0 and p = 0 / 0
+  arm_levels <- c(sort(unique(cards::ADSL$TRTA)), "Arm Z")
+  ard_z <- ard_stack_hierarchical(
+    data = dplyr::mutate(ADAE_observed, TRTA = factor(TRTA, levels = arm_levels)),
+    variables = c(AESOC, AEDECOD),
+    by = TRTA,
+    denominator = dplyr::mutate(cards::ADSL, TRTA = factor(TRTA, levels = arm_levels)),
+    id = USUBJID
   )
+  ard_full <- add_hierarchical_unobserved_levels(ard_z, levels = levels_all)
 
-  # the unobserved parent is added at the top level
-  expect_true("Vascular" %in% lvl1(out$variable_level[out$variable == "SOC"]))
-  # and its children are added underneath it
-  kids <- out$variable_level[out$variable == "PT" & lvl1(out$group1_level) == "Vascular"]
-  expect_setequal(unique(lvl1(kids)), c("PTX", "PTY"))
-  expect_true(all(
-    unlist(out$stat[out$variable == "PT" & lvl1(out$group1_level) == "Vascular" & out$stat_name == "n"]) == 0
-  ))
+  ard_eye_p <- dplyr::filter(
+    ard_full,
+    variable == "AESOC", variable_level %in% list("EYE DISORDERS"), stat_name == "p"
+  )
+  expect_equal(unlist(ard_eye_p$stat), c(0, 0, 0, NaN))
 })
 
-test_that("add_hierarchical_unobserved_levels() adds a missing child of an observed parent", {
-  ard <- make_ard()
-  out <- add_hierarchical_unobserved_levels(
-    ard,
-    levels = data.frame(SOC = c("Cardiac", "Cardiac", "Cardiac"), PT = c("PT1", "PT2", "PT3"))
-  )
+test_that("add_hierarchical_unobserved_levels() formats the added levels of a formatted ARD", {
+  ard_full <- add_hierarchical_unobserved_levels(apply_fmt_fun(ard), levels = levels_all)
 
-  expect_true("PT3" %in% lvl1(out$variable_level[out$variable == "PT" & lvl1(out$group1_level) == "Cardiac"]))
-  expect_equal(
-    out$stat[out$variable == "PT" & lvl1(out$variable_level) == "PT3" &
-      lvl1(out$group1_level) == "Cardiac" & out$stat_name == "n"][[1L]],
-    0
-  )
+  ard_eye <- dplyr::filter(ard_full, variable == "AESOC", variable_level %in% list("EYE DISORDERS"))
+  expect_equal(unlist(ard_eye$stat_fmt[ard_eye$stat_name %in% c("n", "p")]), rep(c("0", "0.0"), times = 3L))
 })
 
-test_that("add_hierarchical_unobserved_levels() completes parents and children in one call", {
-  ard <- make_ard()
-  levels <- data.frame(
-    SOC = c("Vascular", "Vascular", "Cardiac"),
-    PT = c("PTX", "PTY", "PT3")
-  )
-  out <- add_hierarchical_unobserved_levels(ard, levels = levels)
-
-  expect_true("Vascular" %in% lvl1(out$variable_level[out$variable == "SOC"]))
-  expect_setequal(
-    unique(lvl1(out$variable_level[out$variable == "PT" & lvl1(out$group1_level) == "Vascular"])),
-    c("PTX", "PTY")
-  )
-  expect_true("PT3" %in% lvl1(out$variable_level[out$variable == "PT" & lvl1(out$group1_level) == "Cardiac"]))
-})
-
-test_that("add_hierarchical_unobserved_levels() preserves the by structure", {
-  ard <- make_ard(by = TRUE)
-  out <- add_hierarchical_unobserved_levels(
-    ard,
-    levels = data.frame(SOC = "Vascular", PT = "PTX")
+test_that("add_hierarchical_unobserved_levels() errors with incorrect inputs", {
+  # `x` is not a stacked hierarchical ARD
+  expect_snapshot(
+    add_hierarchical_unobserved_levels(ard_tabulate(cards::ADSL, variables = AGEGR1), levels = levels_all),
+    error = TRUE
   )
 
-  # one Vascular SOC row per by-group, with the arm retained in group1
-  vasc_soc <- out[out$variable == "SOC" & lvl1(out$variable_level) == "Vascular" & out$stat_name == "n", ]
-  expect_equal(nrow(vasc_soc), 2L)
-  expect_setequal(lvl1(vasc_soc$group1_level), c("A", "B"))
+  # `levels` is not a data frame
+  expect_snapshot(
+    add_hierarchical_unobserved_levels(ard, levels = "EYE DISORDERS"),
+    error = TRUE
+  )
 
-  # one Vascular > PTX row per by-group, with the parent SOC in group2
-  vasc_pt <- out[out$variable == "PT" & lvl1(out$variable_level) == "PTX" & out$stat_name == "n", ]
-  expect_equal(nrow(vasc_pt), 2L)
-  expect_setequal(lvl1(vasc_pt$group2_level), c("Vascular"))
-})
+  # a column of `levels` is not a hierarchy variable
+  expect_snapshot(
+    add_hierarchical_unobserved_levels(ard, levels = data.frame(TRTA = "Placebo")),
+    error = TRUE
+  )
 
-test_that("add_hierarchical_unobserved_levels() is a no-op when nothing is missing", {
-  ard <- make_ard()
-  # every combination in `levels` is already observed, so the input is unchanged
-  out <- add_hierarchical_unobserved_levels(
-    ard,
-    levels = data.frame(
-      SOC = c("Cardiac", "Cardiac", "GI", "GI"),
-      PT = c("PT1", "PT2", "PT1", "PT2")
-    )
+  # the columns of `levels` do not start from the top of the hierarchy
+  expect_snapshot(
+    add_hierarchical_unobserved_levels(ard, levels = dplyr::distinct(levels_all, AEDECOD)),
+    error = TRUE
   )
-  expect_equal(nrow(out), nrow(ard))
-})
 
-test_that("add_hierarchical_unobserved_levels() input checks", {
-  ard <- make_ard()
-  expect_error(
-    add_hierarchical_unobserved_levels(data.frame(a = 1), levels = data.frame(SOC = "X")),
-    class = "check_class"
+  # `levels` has missing values
+  expect_snapshot(
+    add_hierarchical_unobserved_levels(ard, levels = data.frame(AESOC = NA_character_)),
+    error = TRUE
   )
-  expect_error(
-    add_hierarchical_unobserved_levels(ard, levels = "not a data frame"),
-    class = "check_data_frame"
-  )
-  # a column that is not a hierarchical variable in the ARD is rejected
-  expect_error(
-    add_hierarchical_unobserved_levels(ard, levels = data.frame(NOTAVAR = "X")),
-    "Unknown column"
-  )
-})
 
-test_that("add_hierarchical_unobserved_levels() output remains a valid ARD", {
-  ard <- make_ard()
-  out <- add_hierarchical_unobserved_levels(
-    ard,
-    levels = data.frame(SOC = "Vascular", PT = "PTX")
+  # a level of the wrong type
+  expect_snapshot(
+    add_hierarchical_unobserved_levels(ard, levels = data.frame(AESOC = 1)),
+    error = TRUE
   )
-  expect_no_error(sort_ard_hierarchical(out))
+
+  # a statistic with no known value for an unobserved level
+  ard_cum <- ard
+  ard_cum$stat_name[ard_cum$variable == "AESOC" & ard_cum$stat_name == "N"] <- "n_cum"
+  expect_snapshot(
+    add_hierarchical_unobserved_levels(ard_cum, levels = levels_all),
+    error = TRUE
+  )
+
+  # `x` has no rows to copy for a variable
+  expect_snapshot(
+    add_hierarchical_unobserved_levels(dplyr::filter(ard, variable != "AEDECOD"), levels = levels_all),
+    error = TRUE
+  )
 })

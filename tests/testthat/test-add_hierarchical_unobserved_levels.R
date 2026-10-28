@@ -34,13 +34,19 @@ test_that("add_hierarchical_unobserved_levels() works", {
   # each SOC/AE combination has a row per arm, under its SOC
   expect_equal(ae_rows(ard_full), expected_ae_rows)
 
-  # an added level has n = 0, the N of its arm, and p = 0
-  ard_eye <- dplyr::filter(ard_full, variable == "AESOC", variable_level %in% list("EYE DISORDERS"))
-  ard_cardiac <- dplyr::filter(ard_full, variable == "AESOC", variable_level %in% list("CARDIAC DISORDERS"))
-  expect_identical(unique(ard_eye$stat[ard_eye$stat_name == "n"]), list(0L))
-  expect_identical(unique(ard_eye$stat[ard_eye$stat_name == "p"]), list(0))
-  expect_identical(ard_eye$group1_level, ard_cardiac$group1_level)
-  expect_identical(ard_eye$stat[ard_eye$stat_name == "N"], ard_cardiac$stat[ard_cardiac$stat_name == "N"])
+  # every added level, SOC or AE, has n = 0, the N of its arm, and p = 0
+  ard_added <- dplyr::filter(
+    ard_full,
+    variable %in% c("AESOC", "AEDECOD"),
+    !variable_level %in% list("CARDIAC DISORDERS", "MYOCARDIAL INFARCTION", "SINUS BRADYCARDIA")
+  )
+  expect_equal(nrow(ard_added), 26L * 3L * 3L) # 1 SOC and 25 AEs, in 3 arms, with n, N and p
+  expect_identical(unique(ard_added$stat[ard_added$stat_name == "n"]), list(0L))
+  expect_identical(unique(ard_added$stat[ard_added$stat_name == "p"]), list(0))
+  expect_equal(
+    ard_added |> dplyr::filter(stat_name == "N") |> dplyr::distinct(group1_level, stat),
+    ard |> dplyr::filter(variable == "AESOC", stat_name == "N") |> dplyr::distinct(group1_level, stat)
+  )
 
   # the rows of `x` are unchanged: removing the zero-count levels gives back `x`
   expect_equal(filter_ard_hierarchical(ard_full, sum(n) > 0), ard)
@@ -99,6 +105,14 @@ test_that("add_hierarchical_unobserved_levels() works with `overall`, `over_vari
       group2_level = c("EYE DISORDERS", "EYE DISORDERS", "EYE DISORDERS", NA)
     ),
     ignore_attr = "args"
+  )
+  # with the N of each arm, and of all subjects in the overall row
+  expect_equal(
+    ard_full |>
+      dplyr::filter(variable == "AEDECOD", variable_level %in% list("GLAUCOMA"), stat_name == "N") |>
+      dplyr::pull(stat) |>
+      unlist(),
+    unname(c(table(cards::ADSL$TRTA), nrow(cards::ADSL)))
   )
 
   # the rows that do not depend on the levels are unchanged

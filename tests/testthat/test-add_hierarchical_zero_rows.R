@@ -28,8 +28,8 @@ ae_rows <- function(x) {
 }
 expected_ae_rows <- sort(rep(paste(levels_all$AESOC, levels_all$AEDECOD, sep = " / "), times = 3L))
 
-test_that("add_hierarchical_unobserved_levels() works", {
-  expect_silent(ard_full <- add_hierarchical_unobserved_levels(ard, levels = levels_all))
+test_that("add_hierarchical_zero_rows() works", {
+  expect_silent(ard_full <- add_hierarchical_zero_rows(ard, levels = levels_all))
 
   # each SOC/AE combination has a row per arm, under its SOC
   expect_equal(ae_rows(ard_full), expected_ae_rows)
@@ -56,13 +56,13 @@ test_that("add_hierarchical_unobserved_levels() works", {
 
   # the column order of `levels` does not matter
   expect_equal(
-    add_hierarchical_unobserved_levels(ard, levels = levels_all[c("AEDECOD", "AESOC")]),
+    add_hierarchical_zero_rows(ard, levels = levels_all[c("AEDECOD", "AESOC")]),
     ard_full
   )
 })
 
-test_that("add_hierarchical_unobserved_levels() adds the top level only", {
-  ard_soc <- add_hierarchical_unobserved_levels(ard, levels = dplyr::distinct(ADAE_subset, AESOC))
+test_that("add_hierarchical_zero_rows() adds the top level only", {
+  ard_soc <- add_hierarchical_zero_rows(ard, levels = dplyr::distinct(ADAE_subset, AESOC))
 
   # EYE DISORDERS is added, a row per arm and statistic, with no AE rows under it
   expect_equal(nrow(ard_soc), nrow(ard) + 9L)
@@ -70,14 +70,14 @@ test_that("add_hierarchical_unobserved_levels() adds the top level only", {
   expect_equal(ae_rows(ard_soc), ae_rows(ard))
 })
 
-test_that("add_hierarchical_unobserved_levels() returns `x` unchanged when no level is missing", {
+test_that("add_hierarchical_zero_rows() returns `x` unchanged when no level is missing", {
   expect_identical(
-    add_hierarchical_unobserved_levels(ard, levels = dplyr::distinct(ADAE_observed, AESOC, AEDECOD)),
+    add_hierarchical_zero_rows(ard, levels = dplyr::distinct(ADAE_observed, AESOC, AEDECOD)),
     ard
   )
 })
 
-test_that("add_hierarchical_unobserved_levels() works with `overall`, `over_variables`, `attributes` and `total_n`", {
+test_that("add_hierarchical_zero_rows() works with `overall`, `over_variables`, `attributes` and `total_n`", {
   ard_opts <- ard_stack_hierarchical(
     data = ADAE_observed,
     variables = c(AESOC, AEDECOD),
@@ -89,7 +89,7 @@ test_that("add_hierarchical_unobserved_levels() works with `overall`, `over_vari
     attributes = TRUE,
     total_n = TRUE
   )
-  ard_full <- add_hierarchical_unobserved_levels(ard_opts, levels = levels_all)
+  ard_full <- add_hierarchical_zero_rows(ard_opts, levels = levels_all)
 
   # an added AE has a row per arm and an overall row, all under its SOC
   expect_equal(
@@ -120,7 +120,7 @@ test_that("add_hierarchical_unobserved_levels() works with `overall`, `over_vari
   expect_equal(other_rows(ard_full), other_rows(ard_opts))
 })
 
-test_that("add_hierarchical_unobserved_levels() works with `include`", {
+test_that("add_hierarchical_zero_rows() works with `include`", {
   ard_ae <- ard_stack_hierarchical(
     data = ADAE_observed,
     variables = c(AESOC, AEDECOD),
@@ -129,21 +129,21 @@ test_that("add_hierarchical_unobserved_levels() works with `include`", {
     id = USUBJID,
     include = AEDECOD
   )
-  ard_full <- add_hierarchical_unobserved_levels(ard_ae, levels = levels_all)
+  ard_full <- add_hierarchical_zero_rows(ard_ae, levels = levels_all)
 
   # AE rows are added under their SOC, and no SOC summary rows are created
   expect_equal(ae_rows(ard_full), expected_ae_rows)
   expect_false("AESOC" %in% ard_full$variable)
 })
 
-test_that("add_hierarchical_unobserved_levels() works with ard_stack_hierarchical_count()", {
+test_that("add_hierarchical_zero_rows() works with ard_stack_hierarchical_count()", {
   ard_count <- ard_stack_hierarchical_count(
     data = ADAE_observed,
     variables = c(AESOC, AEDECOD),
     by = TRTA,
     denominator = cards::ADSL
   )
-  ard_full <- add_hierarchical_unobserved_levels(ard_count, levels = levels_all)
+  ard_full <- add_hierarchical_zero_rows(ard_count, levels = levels_all)
 
   expect_equal(ae_rows(ard_full), expected_ae_rows)
 
@@ -153,7 +153,7 @@ test_that("add_hierarchical_unobserved_levels() works with ard_stack_hierarchica
   expect_identical(unique(ard_eye$stat), list(0L))
 })
 
-test_that("add_hierarchical_unobserved_levels() works with three hierarchy variables", {
+test_that("add_hierarchical_zero_rows() works with three hierarchy variables", {
   ard_sev <- ard_stack_hierarchical(
     data = ADAE_subset,
     variables = c(AESOC, AEDECOD, AESEV),
@@ -162,7 +162,7 @@ test_that("add_hierarchical_unobserved_levels() works with three hierarchy varia
     id = USUBJID
   )
   # no severe GLAUCOMA is reported
-  ard_full <- add_hierarchical_unobserved_levels(
+  ard_full <- add_hierarchical_zero_rows(
     ard_sev,
     levels = data.frame(AESOC = "EYE DISORDERS", AEDECOD = "GLAUCOMA", AESEV = "SEVERE")
   )
@@ -177,7 +177,7 @@ test_that("add_hierarchical_unobserved_levels() works with three hierarchy varia
   expect_identical(unique(ard_severe$stat[ard_severe$stat_name == "n"]), list(0L))
 })
 
-test_that("add_hierarchical_unobserved_levels() keeps factor levels as factors", {
+test_that("add_hierarchical_zero_rows() keeps factor levels as factors", {
   # the factor levels are the observed ones only, so the added levels are new
   ard_fct <- ADAE_observed |>
     dplyr::mutate(AESOC = factor(AESOC), AEDECOD = factor(AEDECOD)) |>
@@ -187,7 +187,7 @@ test_that("add_hierarchical_unobserved_levels() keeps factor levels as factors",
       denominator = cards::ADSL,
       id = USUBJID
     )
-  ard_full <- add_hierarchical_unobserved_levels(ard_fct, levels = levels_all)
+  ard_full <- add_hierarchical_zero_rows(ard_fct, levels = levels_all)
 
   # added levels are factors too, so the level columns still unlist to factors
   expect_s3_class(unlist(ard_full$variable_level[ard_full$variable == "AESOC"]), "factor")
@@ -195,7 +195,7 @@ test_that("add_hierarchical_unobserved_levels() keeps factor levels as factors",
   expect_equal(ae_rows(ard_full), expected_ae_rows)
 })
 
-test_that("add_hierarchical_unobserved_levels() keeps `p` as NaN in an empty `by` group", {
+test_that("add_hierarchical_zero_rows() keeps `p` as NaN in an empty `by` group", {
   # "Arm Z" has no subjects, so N = 0 and p = 0 / 0
   arm_levels <- c(sort(unique(cards::ADSL$TRTA)), "Arm Z")
   ard_z <- ard_stack_hierarchical(
@@ -205,7 +205,7 @@ test_that("add_hierarchical_unobserved_levels() keeps `p` as NaN in an empty `by
     denominator = dplyr::mutate(cards::ADSL, TRTA = factor(TRTA, levels = arm_levels)),
     id = USUBJID
   )
-  ard_full <- add_hierarchical_unobserved_levels(ard_z, levels = levels_all)
+  ard_full <- add_hierarchical_zero_rows(ard_z, levels = levels_all)
 
   ard_eye_p <- dplyr::filter(
     ard_full,
@@ -214,47 +214,47 @@ test_that("add_hierarchical_unobserved_levels() keeps `p` as NaN in an empty `by
   expect_equal(unlist(ard_eye_p$stat), c(0, 0, 0, NaN))
 })
 
-test_that("add_hierarchical_unobserved_levels() formats the added levels of a formatted ARD", {
-  ard_full <- add_hierarchical_unobserved_levels(apply_fmt_fun(ard), levels = levels_all)
+test_that("add_hierarchical_zero_rows() formats the added levels of a formatted ARD", {
+  ard_full <- add_hierarchical_zero_rows(apply_fmt_fun(ard), levels = levels_all)
 
   ard_eye <- dplyr::filter(ard_full, variable == "AESOC", variable_level %in% list("EYE DISORDERS"))
   expect_equal(unlist(ard_eye$stat_fmt[ard_eye$stat_name %in% c("n", "p")]), rep(c("0", "0.0"), times = 3L))
 })
 
-test_that("add_hierarchical_unobserved_levels() errors with incorrect inputs", {
+test_that("add_hierarchical_zero_rows() errors with incorrect inputs", {
   # `x` is not a stacked hierarchical ARD
   expect_snapshot(
-    add_hierarchical_unobserved_levels(ard_tabulate(cards::ADSL, variables = AGEGR1), levels = levels_all),
+    add_hierarchical_zero_rows(ard_tabulate(cards::ADSL, variables = AGEGR1), levels = levels_all),
     error = TRUE
   )
 
   # `levels` is not a data frame
   expect_snapshot(
-    add_hierarchical_unobserved_levels(ard, levels = "EYE DISORDERS"),
+    add_hierarchical_zero_rows(ard, levels = "EYE DISORDERS"),
     error = TRUE
   )
 
   # a column of `levels` is not a hierarchy variable
   expect_snapshot(
-    add_hierarchical_unobserved_levels(ard, levels = data.frame(TRTA = "Placebo")),
+    add_hierarchical_zero_rows(ard, levels = data.frame(TRTA = "Placebo")),
     error = TRUE
   )
 
   # the columns of `levels` do not start from the top of the hierarchy
   expect_snapshot(
-    add_hierarchical_unobserved_levels(ard, levels = dplyr::distinct(levels_all, AEDECOD)),
+    add_hierarchical_zero_rows(ard, levels = dplyr::distinct(levels_all, AEDECOD)),
     error = TRUE
   )
 
   # `levels` has missing values
   expect_snapshot(
-    add_hierarchical_unobserved_levels(ard, levels = data.frame(AESOC = NA_character_)),
+    add_hierarchical_zero_rows(ard, levels = data.frame(AESOC = NA_character_)),
     error = TRUE
   )
 
   # a level of the wrong type
   expect_snapshot(
-    add_hierarchical_unobserved_levels(ard, levels = data.frame(AESOC = 1)),
+    add_hierarchical_zero_rows(ard, levels = data.frame(AESOC = 1)),
     error = TRUE
   )
 
@@ -262,13 +262,13 @@ test_that("add_hierarchical_unobserved_levels() errors with incorrect inputs", {
   ard_cum <- ard
   ard_cum$stat_name[ard_cum$variable == "AESOC" & ard_cum$stat_name == "N"] <- "n_cum"
   expect_snapshot(
-    add_hierarchical_unobserved_levels(ard_cum, levels = levels_all),
+    add_hierarchical_zero_rows(ard_cum, levels = levels_all),
     error = TRUE
   )
 
   # `x` has no rows to copy for a variable
   expect_snapshot(
-    add_hierarchical_unobserved_levels(dplyr::filter(ard, variable != "AEDECOD"), levels = levels_all),
+    add_hierarchical_zero_rows(dplyr::filter(ard, variable != "AEDECOD"), levels = levels_all),
     error = TRUE
   )
 })

@@ -1,11 +1,11 @@
-#' Add Unobserved Levels to Hierarchical ARDs
+#' Add Zero Rows to Stacked Hierarchical ARDs
 #'
 #' @description `r lifecycle::badge('experimental')`\cr
 #'
 #' A stacked hierarchical ARD only has rows for the levels observed in the data:
 #' an SOC with no events, or an AE never reported under an SOC, has no rows.
 #'
-#' `add_hierarchical_unobserved_levels()` adds these rows. Pass the level
+#' `add_hierarchical_zero_rows()` adds these rows. Pass the level
 #' combinations you expect in `levels`: each combination missing from `x` is
 #' added with `n = 0`, the denominator `N` of its `by` group, and `p = 0`. As in
 #' the rest of the ARD, `p` is `NaN` only when the `by` group is empty (`N = 0`).
@@ -28,7 +28,7 @@
 #'
 #' @return an ARD data frame of class 'card'
 #' @seealso [sort_ard_hierarchical()]
-#' @name add_hierarchical_unobserved_levels
+#' @name add_hierarchical_zero_rows
 #'
 #' @examplesIf (identical(Sys.getenv("NOT_CRAN"), "true") || identical(Sys.getenv("IN_PKGDOWN"), "true"))
 #' # AEs of two SOCs: no severe AE is reported for EYE DISORDERS,
@@ -46,15 +46,15 @@
 #'   )
 #'
 #' # add the SOC with no severe AEs
-#' add_hierarchical_unobserved_levels(ard, levels = dplyr::distinct(adae, AESOC))
+#' add_hierarchical_zero_rows(ard, levels = dplyr::distinct(adae, AESOC))
 #'
 #' # add every SOC/AE combination of the two SOCs
-#' add_hierarchical_unobserved_levels(ard, levels = dplyr::distinct(adae, AESOC, AEDECOD))
+#' add_hierarchical_zero_rows(ard, levels = dplyr::distinct(adae, AESOC, AEDECOD))
 NULL
 
-#' @rdname add_hierarchical_unobserved_levels
+#' @rdname add_hierarchical_zero_rows
 #' @export
-add_hierarchical_unobserved_levels <- function(x, levels) {
+add_hierarchical_zero_rows <- function(x, levels) {
   set_cli_abort_call()
 
   # check inputs ---------------------------------------------------------------
